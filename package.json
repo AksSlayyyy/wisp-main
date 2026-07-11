@@ -1,0 +1,20 @@
+{
+  "name": "wisp",
+  "private": true,
+  "scripts": {
+    "db:apply": "node scripts/apply-supabase-schema.mjs",
+    "db:apply-training-migration": "node scripts/apply-training-migration.mjs",
+    "training:upload": "node scripts/upload-training-to-storage.mjs",
+    "backend:health": "node scripts/verify-backend-health.mjs",
+    "wisp:merge-prototype": "python scripts/merge_wisp_template.py design/templates/wisp-template-cleaned.docx design/templates/wisp-template-merged-prototype.docx design/templates/sample-merge-data.json",
+    "wisp:merge-service": "python scripts/wisp_merge_service.py"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.1",
+    "docx-preview": "^0.3.7",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.1.200",
+    "pg": "^8.22.0"
+  }
+}
+

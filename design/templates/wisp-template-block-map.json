@@ -1,0 +1,126 @@
+{
+  "source_template": "design/templates/wisp-template-cleaned.docx",
+  "notes": [
+    "Prototype locator map for the cleaned community-converted DOCX template.",
+    "Use heading/anchor matching for now; replace with bookmarks/content controls in a later pass."
+  ],
+  "merge_fields": {
+    "companyName": {
+      "placeholder_texts": [
+        "[Your Firm Name Here]",
+        "[The Firm]"
+      ]
+    },
+    "principalOperatingOfficer": {
+      "placeholder_texts": [
+        "[Employee's Name]",
+        "[Principal Operating Officer/Owner Title]"
+      ]
+    },
+    "dataSecurityCoordinator": {
+      "placeholder_texts": [
+        "[Employee's Name]"
+      ]
+    },
+    "publicInformationOfficer": {
+      "placeholder_texts": [
+        "[Employee's Name]"
+      ]
+    },
+    "signatureTitle": {
+      "placeholder_texts": [
+        "[Principal Operating Officer/Owner Title]"
+      ]
+    }
+  },
+  "blocks": {
+    "objective": {
+      "start_anchor": "OBJECTIVE",
+      "type": "section_block"
+    },
+    "purpose": {
+      "start_anchor": "PURPOSE",
+      "type": "section_block"
+    },
+    "scope": {
+      "start_anchor": "SCOPE",
+      "type": "section_block"
+    },
+    "officials-dsc": {
+      "start_anchor": "IDENTIFIED RESPONSIBLE OFFICIALS",
+      "match_contains": "Data Security Coordinator",
+      "type": "role_block"
+    },
+    "officials-pio": {
+      "start_anchor": "IDENTIFIED RESPONSIBLE OFFICIALS",
+      "match_contains": "Public Information Officer",
+      "type": "role_block"
+    },
+    "inside-firm-intro": {
+      "start_anchor": "INSIDE THE FIRM RISK MITIGATION",
+      "type": "intro_paragraph"
+    },
+    "inside-firm-collection": {
+      "start_anchor": "PII Collection and Retention Policy",
+      "type": "policy_block"
+    },
+    "inside-firm-personnel": {
+      "start_anchor": "Personnel Accountability Policy",
+      "type": "policy_block"
+    },
+    "inside-firm-disclosure": {
+      "start_anchor": "PII Disclosure Policy",
+      "type": "policy_block"
+    },
+    "inside-firm-reportable": {
+      "start_anchor": "Reportable Event Policy",
+      "type": "policy_block"
+    },
+    "outside-firm-intro": {
+      "start_anchor": "OUTSIDE THE FIRM RISK MITIGATION",
+      "type": "intro_paragraph"
+    },
+    "outside-firm-network": {
+      "start_anchor": "Network Protection Policy",
+      "type": "policy_block"
+    },
+    "outside-firm-access": {
+      "start_anchor": "Firm User Access Control Policy",
+      "type": "policy_block"
+    },
+    "outside-firm-exchange": {
+      "start_anchor": "Electronic Exchange of PII Policy",
+      "type": "policy_block"
+    },
+    "outside-firm-wifi": {
+      "start_anchor": "Wi-Fi Access Policy",
+      "type": "policy_block"
+    },
+    "outside-firm-remote": {
+      "start_anchor": "Remote Access Policy",
+      "type": "policy_block"
+    },
+    "outside-firm-devices": {
+      "start_anchor": "Connected Devices Policy",
+      "type": "policy_block"
+    },
+    "outside-firm-training": {
+      "start_anchor": "Information Security Training Policy",
+      "type": "policy_block"
+    },
+    "policies-rules": {
+      "start_anchor": "Sample Attachment B: Rules of Behavior and Conduct Safe- guarding Client PII",
+      "type": "attachment_policy_block"
+    },
+    "policies-breach": {
+      "start_anchor": null,
+      "type": "missing_from_candidate",
+      "note": "This cleaned DOCX candidate does not appear to contain a dedicated Security Breach Notifications and Procedures section matching the current builder block."
+    },
+    "resources-intro": {
+      "start_anchor": null,
+      "type": "missing_from_candidate",
+      "note": "The cleaned DOCX candidate does not currently include the app's curated resources intro/reference section."
+    }
+  }
+}

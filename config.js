@@ -1,0 +1,4 @@
+window.__ENV__ = {
+  SUPABASE_URL: "https://thowcapchyevizbkcofs.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRob3djYXBjaHlldml6Ymtjb2ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNjM1ODEsImV4cCI6MjA5NzgzOTU4MX0.X01hCIb83GEnoVigpyrCrUcOnP4VTbbYcYGqfKPp_rk"
+};

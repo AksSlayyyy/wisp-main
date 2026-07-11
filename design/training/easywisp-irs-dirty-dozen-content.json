@@ -1,0 +1,170 @@
+{
+  "meta": {
+    "title": "EasyWISP IRS Dirty Dozen Briefing",
+    "subtitle": "2026 Awareness Briefing",
+    "version": "July 2026",
+    "theme": "alert",
+    "output": "G:\\WISP\\design\\training\\easywisp-irs-dirty-dozen-briefing.pdf"
+  },
+  "slides": [
+    {
+      "layout": "cover",
+      "eyebrow": "Risk Briefing Series",
+      "title": "IRS Dirty Dozen",
+      "subtitle": "A sharper EasyWISP briefing on the scam patterns and tax schemes clients and staff should recognize early.",
+      "footerLeft": "EasyWISP risk awareness brief",
+      "footerRight": "Internal education asset"
+    },
+    {
+      "layout": "bullets",
+      "eyebrow": "Overview",
+      "title": "Why the Dirty Dozen matters",
+      "intro": "The IRS Dirty Dozen is an annual awareness initiative highlighting scam patterns, abusive promotions, and recurring fraud schemes that put taxpayers, firms, and advisers at risk. The list is useful because it shows what attackers and dishonest promoters keep repackaging year after year.",
+      "bullets": [
+        "These scams usually intensify during tax season, but many continue all year long.",
+        "The objective may be stolen credentials, false refunds, manipulated filings, or high-fee abusive tax arrangements.",
+        "Firms should use the list as a staff-education and client-education tool, not just a compliance talking point.",
+        "When something sounds unusually urgent, secret, or too good to be true, it usually deserves deeper review."
+      ]
+    },
+    {
+      "layout": "two-column",
+      "eyebrow": "Scam Cluster 1",
+      "title": "Digital impersonation scams",
+      "leftHeading": "1. Phishing and smishing",
+      "leftBullets": [
+        "Fake emails and texts impersonate trusted organizations, clients, or contacts.",
+        "Prime targets include tax firms, payroll personnel, HR teams, and anyone with access to sensitive files.",
+        "Goal: steal credentials, install malware, or capture taxpayer data."
+      ],
+      "rightHeading": "2. Fake help with online accounts",
+      "rightBullets": [
+        "Scammers offer to help set up or fix IRS-related accounts.",
+        "The real goal is account access, identity theft, or false filing activity.",
+        "Staff and clients should create or manage accounts only through verified official channels."
+      ]
+    },
+    {
+      "layout": "two-column",
+      "eyebrow": "Scam Cluster 2",
+      "title": "Promoters selling bad positions",
+      "leftHeading": "3. Aggressive tax-credit promoters",
+      "leftBullets": [
+        "Promoters push questionable credit claims, especially where public confusion already exists.",
+        "The ERC remains a major example of how aggressive marketing can outpace actual eligibility.",
+        "Clients often face the audit risk long after the promoter disappears."
+      ],
+      "rightHeading": "4. False fuel tax credit claims",
+      "rightBullets": [
+        "This credit is limited and not broadly available to most taxpayers.",
+        "Scammers invent receipts, false usage stories, or manufactured support.",
+        "The fee model often rewards the promoter while leaving the taxpayer exposed."
+      ]
+    },
+    {
+      "layout": "two-column",
+      "eyebrow": "Scam Cluster 3",
+      "title": "Debt relief and donation abuse",
+      "leftHeading": "5. Offers in compromise mills",
+      "leftBullets": [
+        "Heavy marketing can make debt relief look easier or more universal than it is.",
+        "Many clients are pushed into expensive services before anyone checks actual eligibility.",
+        "Real evaluation should happen before any promise of dramatic reduction."
+      ],
+      "rightHeading": "6. Fake charities",
+      "rightBullets": [
+        "Fraudsters exploit disasters, tragedies, and seasonal generosity.",
+        "Donors may believe they are helping when they are really funding theft.",
+        "Verification matters before sharing payment details or making donations."
+      ]
+    },
+    {
+      "layout": "two-column",
+      "eyebrow": "Scam Cluster 4",
+      "title": "Bad preparers and bad advice",
+      "leftHeading": "7. Untrustworthy tax preparers",
+      "leftBullets": [
+        "Ghost preparers or dishonest return preparers may inflate refunds, misuse credits, or steal entire refunds.",
+        "Clients can also lose control of their personal information in the process.",
+        "Firms should reinforce real credentials, real review standards, and real accountability."
+      ],
+      "rightHeading": "8. Social media tax myths",
+      "rightBullets": [
+        "Short-form platforms can spread false refund tricks and fabricated filing ideas quickly.",
+        "Bad advice is often framed as a hidden loophole or easy win.",
+        "Virality is not evidence, and tax positions do not become valid because they trend."
+      ]
+    },
+    {
+      "layout": "two-column",
+      "eyebrow": "Scam Cluster 5",
+      "title": "Targeted attacks and elite-client schemes",
+      "leftHeading": "9. Spearphishing against firms",
+      "leftBullets": [
+        "Unlike broad phishing, spearphishing is tailored to a specific firm, role, or workflow.",
+        "A fake high-value prospect or fake document request can be enough to open the door.",
+        "Prospects must be screened before they are trusted with direct file exchange."
+      ],
+      "rightHeading": "10. Illegal schemes for high-value clients",
+      "rightBullets": [
+        "Promoters target wealthier clients with supposedly sophisticated tax-reduction structures.",
+        "These often rely on questionable deductions, engineered trusts, or monetized arrangements.",
+        "If the economics are unclear but the promised tax outcome is dramatic, slow down."
+      ]
+    },
+    {
+      "layout": "two-column",
+      "eyebrow": "Scam Cluster 6",
+      "title": "Bogus strategy sales and offshore promises",
+      "leftHeading": "11. Bogus tax strategies",
+      "leftBullets": [
+        "Some promoters sell strategies built around the promise of eliminating legitimate tax duties.",
+        "Conservation easements, captive structures, and digital-asset narratives are common examples.",
+        "Clients should understand that IRS visibility is usually broader than promoters admit."
+      ],
+      "rightHeading": "12. Offshore and international schemes",
+      "rightBullets": [
+        "Offshore entities and foreign accounts are often marketed as if they hide assets automatically.",
+        "The promise is usually secrecy, asset shielding, or unreal tax savings.",
+        "Cross-border structures deserve licensed review, full documentation, and real substance."
+      ]
+    },
+    {
+      "layout": "checklist",
+      "eyebrow": "Firm Response",
+      "title": "How staff should use this list in practice",
+      "intro": "The Dirty Dozen is most useful when it changes conversations and review habits inside the firm. It should help staff recognize when a client request, new prospect, or outside promoter requires deeper scrutiny.",
+      "checks": [
+        "Slow down when a client or promoter pushes urgency, secrecy, or extraordinary refund claims.",
+        "Escalate questionable tax-credit, offshore, and trust-based ideas before anyone acts on them.",
+        "Use verified communication channels for new-client outreach, sensitive documents, and account setup.",
+        "Educate clients early so they hear the warning from us before they hear the sales pitch from scammers.",
+        "Document suspicious approaches and share patterns internally so the whole firm learns faster."
+      ]
+    },
+    {
+      "layout": "bullets",
+      "eyebrow": "Client Communication",
+      "title": "What clients most need to hear from us",
+      "intro": "Clients do not need a full technical lecture every time. They need clear, calm guidance that helps them avoid fraud, ask better questions, and trust verified professional advice over aggressive marketing.",
+      "bullets": [
+        "Do not click suspicious links or give account access to anyone claiming to help with IRS setup.",
+        "Do not rely on viral tax advice, refund hacks, or promoter claims without licensed review.",
+        "Do not assume a credit, deduction, or structure is valid because someone else said they used it.",
+        "Bring unusual tax strategies to the firm before signing, filing, paying, or sharing personal data."
+      ]
+    },
+    {
+      "layout": "bullets",
+      "eyebrow": "Closeout",
+      "title": "Bottom line",
+      "intro": "The Dirty Dozen changes every year in presentation, but not in principle: fraud follows confusion, urgency, and false confidence. The best defense is disciplined review, credible guidance, and fast escalation whenever something feels off.",
+      "bullets": [
+        "Use this list as an awareness tool, not a one-time presentation.",
+        "Keep reminding staff and clients that pressure and promised shortcuts are major warning signs.",
+        "Route high-risk ideas and suspicious outreach through the right internal reviewers early.",
+        "Revisit the IRS list regularly as part of the firm's broader EasyWISP training cadence."
+      ]
+    }
+  ]
+}

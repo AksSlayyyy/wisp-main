@@ -1,0 +1,11 @@
+node_modules/
+tmp/
+tmp-recovery/
+.tmp-*
+tmp-*.js
+tmp-*.ps1
+*.log
+*.zip
+.env
+.DS_Store
+Thumbs.db

@@ -1,0 +1,1037 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --msp-bg: #f3f7fb;
+  --msp-bg-soft: #edf3f8;
+  --msp-surface: #ffffff;
+  --msp-surface-2: #f8fbfd;
+  --msp-border: #d7e1ec;
+  --msp-border-strong: #c7d4e1;
+  --msp-text: #142033;
+  --msp-text-soft: #4f6074;
+  --msp-text-muted: #7c8b9d;
+  --msp-brand: #16805b;
+  --msp-brand-strong: #116447;
+  --msp-brand-soft: #e6f4ef;
+  --msp-accent: #356fe3;
+  --msp-shadow: 0 20px 48px rgba(19, 35, 58, 0.08);
+  --msp-shadow-soft: 0 12px 28px rgba(19, 35, 58, 0.06);
+  --msp-radius-xl: 28px;
+  --msp-radius-lg: 20px;
+  --msp-radius-md: 14px;
+  --msp-radius-sm: 10px;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top center, rgba(255,255,255,0.92), rgba(243,247,251,0.88) 54%, rgba(237,243,248,0.96)),
+    var(--msp-bg);
+  color: var(--msp-text);
+  min-height: 100vh;
+  padding: 28px;
+}
+
+#app {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 28px 30px 34px;
+  border: 1px solid rgba(215, 225, 236, 0.88);
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,253,0.94) 100%);
+  box-shadow: var(--msp-shadow);
+  backdrop-filter: blur(12px);
+}
+
+.logo-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(215, 225, 236, 0.88);
+}
+
+.logo-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #1e2940 0%, #111827 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+
+.logo-icon svg { width: 24px; height: 24px; }
+.logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--msp-text); }
+.logo-sub { font-size: 13px; color: var(--msp-text-soft); margin-top: 2px; }
+
+.phase { display: none; }
+.phase.active { display: block; }
+
+.welcome-card,
+.client-form,
+.q-card,
+.score-banner,
+.ds-card,
+.finding-card,
+.rec-card,
+.cta-banner {
+  border: 1px solid rgba(215, 225, 236, 0.92);
+  box-shadow: var(--msp-shadow-soft);
+}
+
+/* Welcome */
+.welcome-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.95) 100%);
+  border-radius: var(--msp-radius-xl);
+  padding: 54px 52px 44px;
+  text-align: center;
+}
+
+.welcome-card h1 {
+  font-size: 41px;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  margin-bottom: 14px;
+}
+
+.welcome-card p {
+  font-size: 17px;
+  color: var(--msp-text-soft);
+  line-height: 1.78;
+  margin-bottom: 34px;
+  max-width: 740px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 0 auto 34px;
+  max-width: 840px;
+}
+
+.domain-chip {
+  background: rgba(248, 251, 253, 0.96);
+  border: 1px solid rgba(215, 225, 236, 0.96);
+  border-radius: 18px;
+  padding: 22px 18px;
+  text-align: center;
+}
+
+.domain-chip .icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--msp-brand-soft);
+  color: var(--msp-brand);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.domain-chip .label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--msp-text-soft);
+  letter-spacing: -0.01em;
+}
+
+/* Client info */
+.client-form {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.95) 100%);
+  border-radius: var(--msp-radius-xl);
+  padding: 42px 42px 30px;
+}
+
+.client-form h2 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.client-form .sub {
+  font-size: 15px;
+  color: var(--msp-text-soft);
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+.field { margin-bottom: 18px; }
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--msp-text-soft);
+  margin-bottom: 9px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  height: 54px;
+  padding: 0 16px;
+  border: 1px solid rgba(199, 212, 225, 0.95);
+  border-radius: 14px;
+  font-size: 16px;
+  background: rgba(255,255,255,0.96);
+  color: var(--msp-text);
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.field input::placeholder { color: #95a3b4; }
+
+.field input:focus,
+.field select:focus {
+  border-color: rgba(53, 111, 227, 0.7);
+  box-shadow: 0 0 0 4px rgba(53, 111, 227, 0.12);
+  background: #fff;
+}
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+/* Question phase */
+.q-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.q-domain {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--msp-brand);
+  background: var(--msp-brand-soft);
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+.q-progress-wrap {
+  height: 8px;
+  background: rgba(215, 225, 236, 0.9);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.q-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--msp-brand) 0%, #2e9a72 100%);
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+
+.q-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.96) 100%);
+  border-radius: var(--msp-radius-xl);
+  padding: 34px 34px 32px;
+  min-height: 390px;
+  display: flex;
+  flex-direction: column;
+}
+
+.q-num {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--msp-text-muted);
+  margin-bottom: 12px;
+}
+
+.q-text {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+  margin-bottom: 26px;
+  flex: 1;
+}
+
+.options { display: flex; flex-direction: column; gap: 12px; }
+
+.opt-btn {
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(215, 225, 236, 0.98);
+  border-radius: 18px;
+  padding: 16px 18px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--msp-text);
+  transition: all 0.16s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.75) inset;
+}
+
+.opt-btn:hover {
+  border-color: rgba(53, 111, 227, 0.34);
+  background: #f9fbff;
+  transform: translateY(-1px);
+}
+
+.opt-btn.selected {
+  border-color: rgba(22, 128, 91, 0.38);
+  background: #f4fbf8;
+  color: var(--msp-text);
+  font-weight: 600;
+  box-shadow: 0 0 0 4px rgba(22, 128, 91, 0.09);
+}
+
+.opt-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid #96a7b8;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.opt-btn.selected .opt-radio {
+  border-color: var(--msp-brand);
+}
+
+.opt-btn.selected .opt-radio::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--msp-brand);
+  display: block;
+}
+
+.q-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.q-count { font-size: 13px; color: var(--msp-text-muted); }
+
+/* Analyzing */
+.analyzing {
+  text-align: center;
+  padding: 76px 24px 72px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.96) 100%);
+  border: 1px solid rgba(215, 225, 236, 0.9);
+  border-radius: var(--msp-radius-xl);
+  box-shadow: var(--msp-shadow-soft);
+}
+
+.spinner {
+  width: 58px;
+  height: 58px;
+  border: 4px solid rgba(215, 225, 236, 0.9);
+  border-top-color: var(--msp-brand);
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+  margin: 0 auto 22px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.analyzing h2 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.analyzing p {
+  font-size: 15px;
+  color: var(--msp-text-soft);
+  line-height: 1.65;
+}
+
+.analysis-steps {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.a-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--msp-text-soft);
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.a-step.visible { opacity: 1; }
+
+.a-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c9d5e1;
+  flex-shrink: 0;
+}
+
+.a-step.done .a-dot { background: var(--msp-brand); }
+.a-step.done { color: var(--msp-text); }
+
+/* Report */
+.report-header { margin-bottom: 20px; }
+.report-client { font-size: 15px; color: var(--msp-text-soft); margin-bottom: 6px; }
+
+.report-title {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  margin-bottom: 6px;
+}
+
+.report-date { font-size: 13px; color: var(--msp-text-muted); }
+
+.score-banner {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.96) 100%);
+  border-radius: var(--msp-radius-xl);
+  padding: 26px 30px;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-bottom: 20px;
+}
+
+.score-circle { position: relative; width: 124px; height: 124px; flex-shrink: 0; }
+.score-circle svg { width: 124px; height: 124px; transform: rotate(-90deg); }
+
+.score-number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-val { font-size: 34px; font-weight: 800; letter-spacing: -0.04em; }
+.score-label { font-size: 12px; color: var(--msp-text-soft); }
+.score-info h3 { font-size: 25px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px; }
+.score-info p { font-size: 15px; color: var(--msp-text-soft); line-height: 1.7; max-width: 700px; }
+.score-badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-top: 12px; }
+
+.domain-scores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.ds-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.96) 100%);
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+}
+
+.ds-card .ds-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-text-muted);
+  margin-bottom: 8px;
+}
+
+.ds-card .ds-score { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px; }
+.ds-bar-wrap { height: 8px; background: rgba(215,225,236,0.9); border-radius: 999px; overflow: hidden; }
+.ds-bar { height: 100%; border-radius: inherit; }
+
+.findings-section { margin-bottom: 24px; }
+
+.findings-section h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(215, 225, 236, 0.92);
+}
+
+.finding-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.96) 100%);
+  border-radius: 18px;
+  padding: 18px 20px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border-left: 4px solid transparent;
+}
+
+.finding-card.critical { border-left-color: #dc2626; }
+.finding-card.high { border-left-color: #ea580c; }
+.finding-card.medium { border-left-color: #d4a214; }
+.finding-card.low { border-left-color: var(--msp-brand); }
+
+.finding-sev {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sev-critical { background: #fef2f2; color: #991b1b; }
+.sev-high { background: #fff7ed; color: #9a3412; }
+.sev-medium { background: #fefce8; color: #854d0e; }
+.sev-low { background: #f0fdf4; color: #166534; }
+
+.finding-body .finding-title { font-size: 16px; font-weight: 700; margin-bottom: 5px; }
+.finding-body .finding-desc { font-size: 14px; color: var(--msp-text-soft); line-height: 1.65; }
+
+.rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+
+.rec-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,253,0.96) 100%);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.rec-card .rec-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--msp-brand-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.rec-card .rec-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.rec-card .rec-desc { font-size: 13px; color: var(--msp-text-soft); line-height: 1.65; }
+.rec-card .rec-priority { font-size: 11px; font-weight: 700; margin-top: 12px; padding: 4px 10px; border-radius: 999px; display: inline-block; }
+.priority-immediate { background: #fef2f2; color: #991b1b; }
+.priority-short { background: #fff7ed; color: #9a3412; }
+.priority-medium { background: #fefce8; color: #854d0e; }
+
+.cta-banner {
+  background: linear-gradient(135deg, #101828 0%, #1c2740 100%);
+  border-radius: var(--msp-radius-xl);
+  padding: 30px;
+  text-align: center;
+  color: white;
+}
+
+.cta-banner h3 { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px; }
+.cta-banner p { font-size: 15px; opacity: 0.78; margin-bottom: 18px; line-height: 1.7; }
+.cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+.cta-btn-primary,
+.btn-primary {
+  background: linear-gradient(180deg, #1d8d65 0%, #157555 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 13px 24px;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 24px rgba(21, 117, 85, 0.22);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.cta-btn-primary:hover,
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(21, 117, 85, 0.24);
+  filter: brightness(1.02);
+}
+
+.cta-btn-secondary,
+.btn-secondary {
+  background: rgba(255,255,255,0.84);
+  color: var(--msp-text-soft);
+  border: 1px solid rgba(199, 212, 225, 0.95);
+  border-radius: 14px;
+  padding: 13px 22px;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
+}
+
+.cta-btn-secondary:hover,
+.btn-secondary:hover {
+  background: #fff;
+  border-color: rgba(160, 177, 196, 0.95);
+  transform: translateY(-1px);
+}
+
+.btn-lg {
+  padding: 16px 30px;
+  font-size: 16px;
+  min-width: 240px;
+}
+
+@media (max-width: 900px) {
+  body { padding: 14px; }
+  #app { padding: 20px 18px 24px; border-radius: 24px; }
+  .welcome-card h1 { font-size: 32px; }
+  .domain-grid,
+  .field-row,
+  .domain-scores,
+  .rec-grid { grid-template-columns: 1fr; }
+  .score-banner { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="logo-bar">
+    <div class="logo-icon">
+      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="4" width="16" height="10" rx="2" stroke="white" stroke-width="1.5"/>
+        <path d="M6 8h6M6 11h4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="14" cy="3" r="2.5" fill="#3b82f6"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">IT Assessment Tool</div>
+      <div class="logo-sub">Powered by AI</div>
+    </div>
+  </div>
+
+  <!-- Phase 0: Welcome -->
+  <div id="phase-welcome" class="phase active">
+    <div class="welcome-card">
+      <h1>IT Infrastructure Assessment</h1>
+      <p>A comprehensive 5-minute diagnostic that evaluates your IT environment across 6 key domains — delivering a scored risk report with actionable recommendations.</p>
+      <div class="domain-grid">
+        <div class="domain-chip"><div class="icon">🔐</div><div class="label">Security</div></div>
+        <div class="domain-chip"><div class="icon">☁️</div><div class="label">Cloud & Backup</div></div>
+        <div class="domain-chip"><div class="icon">🌐</div><div class="label">Network</div></div>
+        <div class="domain-chip"><div class="icon">💻</div><div class="label">Endpoints</div></div>
+        <div class="domain-chip"><div class="icon">📋</div><div class="label">Compliance</div></div>
+        <div class="domain-chip"><div class="icon">🛠️</div><div class="label">IT Support</div></div>
+      </div>
+      <button class="btn-primary btn-lg" onclick="showPhase('phase-client')">Start Assessment →</button>
+    </div>
+  </div>
+
+  <!-- Phase 1: Client Info -->
+  <div id="phase-client" class="phase">
+    <div class="client-form">
+      <h2>Prospect Information</h2>
+      <div class="sub">Tell us about the company being assessed</div>
+      <div class="field-row">
+        <div class="field"><label>Company Name</label><input type="text" id="co-name" placeholder="Acme Corp" /></div>
+        <div class="field"><label>Industry</label>
+          <select id="co-industry">
+            <option value="">Select industry</option>
+            <option>Healthcare</option>
+            <option>Finance & Accounting</option>
+            <option>Legal</option>
+            <option>Manufacturing</option>
+            <option>Retail & E-commerce</option>
+            <option>Professional Services</option>
+            <option>Construction</option>
+            <option>Education</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Number of Employees</label>
+          <select id="co-size">
+            <option value="">Select size</option>
+            <option>1-10</option>
+            <option>11-50</option>
+            <option>51-100</option>
+            <option>101-250</option>
+            <option>250+</option>
+          </select>
+        </div>
+        <div class="field"><label>Contact Name</label><input type="text" id="co-contact" placeholder="Jane Smith" /></div>
+      </div>
+      <div class="field"><label>Current IT Setup</label>
+        <select id="co-it">
+          <option value="">How is IT currently managed?</option>
+          <option>No dedicated IT — staff handle issues</option>
+          <option>1 internal IT person</option>
+          <option>Small internal IT team (2-5)</option>
+          <option>Existing MSP / break-fix vendor</option>
+          <option>Mix of internal + external</option>
+        </select>
+      </div>
+      <div style="display:flex; justify-content: space-between; margin-top:1.5rem;">
+        <button class="btn-secondary" onclick="showPhase('phase-welcome')">← Back</button>
+        <button class="btn-primary" onclick="startAssessment()">Begin Diagnostic →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 2: Questions -->
+  <div id="phase-questions" class="phase">
+    <div class="q-header">
+      <span class="q-domain" id="q-domain-label">Security</span>
+      <span class="q-count" id="q-counter">1 / 18</span>
+    </div>
+    <div class="q-progress-wrap"><div class="q-progress-bar" id="q-progress" style="width:5%"></div></div>
+    <div class="q-card">
+      <div class="q-num" id="q-num"></div>
+      <div class="q-text" id="q-text"></div>
+      <div class="options" id="q-options"></div>
+    </div>
+    <div class="q-nav">
+      <button class="btn-secondary" onclick="prevQuestion()">← Previous</button>
+      <button class="btn-primary" id="next-btn" onclick="nextQuestion()">Next →</button>
+    </div>
+  </div>
+
+  <!-- Phase 3: Analyzing -->
+  <div id="phase-analyzing" class="phase">
+    <div class="analyzing">
+      <div class="spinner"></div>
+      <h2>Analyzing IT Environment</h2>
+      <p>Running diagnostics across all 6 domains...</p>
+      <div class="analysis-steps" id="analysis-steps">
+        <div class="a-step" data-i="0"><div class="a-dot"></div>Evaluating security posture</div>
+        <div class="a-step" data-i="1"><div class="a-dot"></div>Assessing backup & recovery</div>
+        <div class="a-step" data-i="2"><div class="a-dot"></div>Analyzing network infrastructure</div>
+        <div class="a-step" data-i="3"><div class="a-dot"></div>Reviewing endpoint management</div>
+        <div class="a-step" data-i="4"><div class="a-dot"></div>Checking compliance posture</div>
+        <div class="a-step" data-i="5"><div class="a-dot"></div>Generating risk report with AI</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 4: Report -->
+  <div id="phase-report" class="phase">
+    <div class="report-header">
+      <div class="report-client" id="report-client-name"></div>
+      <div class="report-title">IT Infrastructure Risk Assessment Report</div>
+      <div class="report-date" id="report-date"></div>
+    </div>
+    <div class="score-banner">
+      <div class="score-circle">
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke-width="8" stroke="var(--color-border-tertiary)"/><circle cx="50" cy="50" r="42" fill="none" stroke-width="8" id="score-arc" stroke-linecap="round"/></svg>
+        <div class="score-number"><span class="score-val" id="score-val">--</span><span class="score-label">/ 100</span></div>
+      </div>
+      <div class="score-info">
+        <h3 id="score-headline">Calculating...</h3>
+        <p id="score-summary"></p>
+        <span class="score-badge" id="score-badge"></span>
+      </div>
+    </div>
+    <div class="domain-scores" id="domain-scores"></div>
+    <div class="findings-section">
+      <h3>Key Findings</h3>
+      <div id="findings-list"></div>
+    </div>
+    <div class="findings-section">
+      <h3>Recommendations</h3>
+      <div class="rec-grid" id="rec-grid"></div>
+    </div>
+    <div class="cta-banner">
+      <h3>Ready to secure your IT infrastructure?</h3>
+      <p>Your assessment reveals significant opportunities to strengthen security, reduce risk, and improve operational efficiency.</p>
+      <div class="cta-buttons">
+        <button class="cta-btn-primary" onclick="sendPrompt('The IT assessment is done. Based on the findings, help me create a tailored MSP service proposal for this prospect.')">Generate Service Proposal ↗</button>
+        <button class="cta-btn-secondary" onclick="sendPrompt('Create a follow-up email I can send to this prospect sharing their IT assessment results and scheduling a call.')">Draft Follow-up Email ↗</button>
+      </div>
+    </div>
+    <div style="margin-top:1rem; text-align:center;">
+      <button class="btn-secondary" onclick="resetTool()">Start New Assessment</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  { domain:"Security", icon:"🔐", q:"Does your company use Multi-Factor Authentication (MFA) for email and business applications?", opts:[{t:"Yes, MFA is enforced for all staff",s:10},{t:"MFA is available but optional",s:5},{t:"No MFA — just usernames and passwords",s:0},{t:"Not sure",s:2}] },
+  { domain:"Security", icon:"🔐", q:"How are software updates and security patches handled across your computers?", opts:[{t:"Automated patching via a managed tool",s:10},{t:"IT reminds staff to update manually",s:4},{t:"Updates happen whenever staff notice them",s:1},{t:"We rarely update — it disrupts work",s:0}] },
+  { domain:"Security", icon:"🔐", q:"Does your organization have active antivirus / endpoint detection and response (EDR) software?", opts:[{t:"Yes — business-grade EDR on all devices",s:10},{t:"Basic antivirus on most computers",s:5},{t:"Only on some machines",s:2},{t:"No antivirus protection",s:0}] },
+  { domain:"Cloud & Backup", icon:"☁️", q:"How frequently is your business data backed up?", opts:[{t:"Continuous or daily automated backups",s:10},{t:"Weekly automated backups",s:6},{t:"Manual backups — done occasionally",s:2},{t:"We don't have a formal backup process",s:0}] },
+  { domain:"Cloud & Backup", icon:"☁️", q:"Have you ever tested restoring data from your backup?", opts:[{t:"Yes — we test restores regularly",s:10},{t:"We tested once when we set it up",s:5},{t:"Never tested — we assume it works",s:1},{t:"We don't have a backup to test",s:0}] },
+  { domain:"Cloud & Backup", icon:"☁️", q:"Where is your business data primarily stored?", opts:[{t:"Cloud platforms (Microsoft 365, Google Workspace, etc.)",s:9},{t:"A mix of cloud and local servers",s:6},{t:"On-premise servers only",s:3},{t:"Mostly on individual computers / USB drives",s:0}] },
+  { domain:"Network", icon:"🌐", q:"How is your office Wi-Fi network managed?", opts:[{t:"Business-grade router with separate guest/staff networks",s:10},{t:"Consumer-grade router — single network for everyone",s:3},{t:"We use the ISP-provided router, no changes made",s:1},{t:"Unsure of the setup",s:2}] },
+  { domain:"Network", icon:"🌐", q:"Do remote employees use a VPN to access company resources?", opts:[{t:"Yes — VPN is required for remote access",s:10},{t:"VPN available but not enforced",s:5},{t:"Staff access company data directly via internet",s:1},{t:"We don't have remote workers",s:8}] },
+  { domain:"Network", icon:"🌐", q:"When was your firewall last reviewed or updated?", opts:[{t:"Within the last 6 months",s:10},{t:"1-2 years ago",s:5},{t:"More than 3 years ago",s:1},{t:"We don't have a firewall / unsure",s:0}] },
+  { domain:"Endpoints", icon:"💻", q:"How old are most of the computers your staff use?", opts:[{t:"Mostly 1-3 years old",s:10},{t:"3-5 years old",s:6},{t:"5-7 years old",s:2},{t:"7+ years old / mixed",s:0}] },
+  { domain:"Endpoints", icon:"💻", q:"Is there a formal process for onboarding and offboarding employees (disabling accounts, collecting devices)?", opts:[{t:"Yes — documented process followed every time",s:10},{t:"Informal process — we do our best",s:4},{t:"No formal process",s:0},{t:"We haven't had employee turnover",s:7}] },
+  { domain:"Endpoints", icon:"💻", q:"How do employees access company email and data on mobile devices?", opts:[{t:"Managed devices with MDM policy enforced",s:10},{t:"Company apps installed on personal phones (unmanaged)",s:3},{t:"No mobile access to company data",s:8},{t:"Unsure",s:2}] },
+  { domain:"Compliance", icon:"📋", q:"Does your industry require compliance with specific regulations (HIPAA, PCI-DSS, GDPR, etc.)?", opts:[{t:"Yes — and we have controls in place",s:10},{t:"Yes — but we're not fully compliant",s:2},{t:"Yes — but we don't know where to start",s:1},{t:"No specific compliance requirements",s:8}] },
+  { domain:"Compliance", icon:"📋", q:"Has your organization ever had a cybersecurity audit or risk assessment?", opts:[{t:"Yes — within the last 12 months",s:10},{t:"Yes — more than 2 years ago",s:5},{t:"No formal assessment ever",s:0},{t:"Not sure",s:2}] },
+  { domain:"Compliance", icon:"📋", q:"Do employees receive cybersecurity awareness training?", opts:[{t:"Yes — mandatory annual training program",s:10},{t:"Ad-hoc training when an incident occurs",s:3},{t:"No formal training",s:0},{t:"We've emailed tips but no structured training",s:2}] },
+  { domain:"IT Support", icon:"🛠️", q:"How do you currently handle IT support issues?", opts:[{t:"Proactive managed services (MSP)",s:10},{t:"Break-fix vendor — we call when something breaks",s:3},{t:"Rely on a tech-savvy employee internally",s:2},{t:"Staff figure it out themselves / Google it",s:0}] },
+  { domain:"IT Support", icon:"🛠️", q:"Do you have a documented IT disaster recovery or business continuity plan?", opts:[{t:"Yes — tested and up to date",s:10},{t:"Exists but not regularly reviewed",s:4},{t:"In progress / being developed",s:2},{t:"No plan exists",s:0}] },
+  { domain:"IT Support", icon:"🛠️", q:"What happens to your business if your IT systems went down for a full day?", opts:[{t:"Minimal impact — we have redundancy",s:10},{t:"Some disruption — staff would work offline",s:5},{t:"Major disruption — most work would stop",s:2},{t:"We would lose significant revenue / data",s:0}] },
+];
+
+let answers = {};
+let currentQ = 0;
+let clientData = {};
+let reportData = {};
+
+function showPhase(id) {
+  document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startAssessment() {
+  const name = document.getElementById('co-name').value.trim();
+  const industry = document.getElementById('co-industry').value;
+  const size = document.getElementById('co-size').value;
+  if (!name || !industry || !size) {
+    alert('Please fill in Company Name, Industry, and Size.');
+    return;
+  }
+  clientData = {
+    name,
+    industry,
+    size,
+    contact: document.getElementById('co-contact').value.trim(),
+    it: document.getElementById('co-it').value
+  };
+  currentQ = 0;
+  answers = {};
+  showPhase('phase-questions');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = QUESTIONS[currentQ];
+  document.getElementById('q-domain-label').textContent = q.domain;
+  document.getElementById('q-num').textContent = q.icon + ' ' + q.domain;
+  document.getElementById('q-text').textContent = q.q;
+  const pct = Math.round(((currentQ) / QUESTIONS.length) * 100);
+  document.getElementById('q-progress').style.width = pct + '%';
+  document.getElementById('q-counter').textContent = (currentQ + 1) + ' / ' + QUESTIONS.length;
+
+  const container = document.getElementById('q-options');
+  container.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn' + (answers[currentQ] === i ? ' selected' : '');
+    btn.innerHTML = '<div class="opt-radio"></div><span>' + opt.t + '</span>';
+    btn.onclick = () => selectOption(i);
+    container.appendChild(btn);
+  });
+
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.textContent = currentQ === QUESTIONS.length - 1 ? 'Finish →' : 'Next →';
+  document.getElementById('next-btn').style.display = 'block';
+}
+
+function selectOption(i) {
+  answers[currentQ] = i;
+  renderQuestion();
+}
+
+function prevQuestion() {
+  if (currentQ > 0) { currentQ--; renderQuestion(); }
+}
+
+function nextQuestion() {
+  if (answers[currentQ] === undefined) {
+    alert('Please select an answer to continue.');
+    return;
+  }
+  if (currentQ < QUESTIONS.length - 1) {
+    currentQ++;
+    renderQuestion();
+  } else {
+    runAnalysis();
+  }
+}
+
+function runAnalysis() {
+  showPhase('phase-analyzing');
+  const steps = document.querySelectorAll('.a-step');
+  let i = 0;
+  const reveal = setInterval(() => {
+    if (i < steps.length) {
+      steps[i].classList.add('visible');
+      if (i > 0) steps[i-1].classList.add('done');
+      i++;
+    } else {
+      clearInterval(reveal);
+      steps[steps.length-1].classList.add('done');
+      setTimeout(() => generateReport(), 800);
+    }
+  }, 700);
+}
+
+function generateReport() {
+  const domains = ['Security','Cloud & Backup','Network','Endpoints','Compliance','IT Support'];
+  const domainScores = {};
+  const domainMax = {};
+  domains.forEach(d => { domainScores[d] = 0; domainMax[d] = 0; });
+
+  QUESTIONS.forEach((q, qi) => {
+    const ans = answers[qi];
+    const score = ans !== undefined ? q.opts[ans].s : 0;
+    const maxScore = Math.max(...q.opts.map(o => o.s));
+    domainScores[q.domain] += score;
+    domainMax[q.domain] += maxScore;
+  });
+
+  const domainPct = {};
+  domains.forEach(d => {
+    domainPct[d] = domainMax[d] > 0 ? Math.round((domainScores[d] / domainMax[d]) * 100) : 0;
+  });
+
+  const totalScore = Math.round(Object.values(domainPct).reduce((a,b)=>a+b,0) / domains.length);
+
+  const findings = buildFindings(domainPct);
+  const recs = buildRecs(domainPct, clientData);
+
+  reportData = { totalScore, domainPct, findings, recs };
+  renderReport(reportData);
+  showPhase('phase-report');
+}
+
+function buildFindings(dp) {
+  const f = [];
+  if (dp['Security'] < 50) f.push({sev:'critical', title:'Critical Security Gaps Detected', desc:'Your security posture shows major vulnerabilities. Missing MFA, outdated patching, and inadequate endpoint protection significantly increase breach risk.'});
+  else if (dp['Security'] < 70) f.push({sev:'high', title:'Security Controls Need Strengthening', desc:'Several security controls are missing or inconsistently applied. Partial MFA adoption and manual patching create exploitable gaps.'});
+
+  if (dp['Cloud & Backup'] < 50) f.push({sev:'critical', title:'Data Loss Risk — Backup Strategy Inadequate', desc:'Current backup practices cannot guarantee data recovery after ransomware, hardware failure, or accidental deletion.'});
+  else if (dp['Cloud & Backup'] < 75) f.push({sev:'high', title:'Backup Processes Lack Verification', desc:'Backups exist but have not been tested for reliable restore, creating false confidence in data recovery capability.'});
+
+  if (dp['Network'] < 60) f.push({sev:'high', title:'Network Infrastructure Vulnerabilities', desc:'Outdated or improperly configured network equipment increases exposure to unauthorized access and lateral movement attacks.'});
+
+  if (dp['Endpoints'] < 60) f.push({sev:'high', title:'Endpoint Management Gaps', desc:'Aging hardware and lack of mobile device management policies create uncontrolled access points into your network.'});
+
+  if (dp['Compliance'] < 50) f.push({sev:'critical', title:'Compliance Exposure', desc:'Operating in a regulated industry without adequate controls exposes the organization to significant legal and financial penalties.'});
+  else if (dp['Compliance'] < 70) f.push({sev:'medium', title:'Compliance Controls Incomplete', desc:'Some regulatory requirements are not fully addressed. Staff training gaps increase the risk of human error leading to a violation.'});
+
+  if (dp['IT Support'] < 50) f.push({sev:'high', title:'No Business Continuity Plan', desc:'Without documented disaster recovery procedures, a system outage could cause extended downtime with no clear remediation path.'});
+  else if (dp['IT Support'] < 70) f.push({sev:'medium', title:'Reactive IT Support Model', desc:'Break-fix support means issues are addressed only after they impact operations, increasing average downtime and cost per incident.'});
+
+  if (f.length === 0) f.push({sev:'low', title:'IT Environment in Good Shape', desc:'Your infrastructure demonstrates strong practices. Focus on maintaining standards and preparing for future growth.'});
+  return f;
+}
+
+function buildRecs(dp, cd) {
+  const r = [];
+  if (dp['Security'] < 70) r.push({icon:'🔐', title:'Deploy MFA & Password Manager', desc:'Enforce MFA across all business apps and implement an enterprise password manager to eliminate credential-based attacks.', priority:'Immediate'});
+  if (dp['Cloud & Backup'] < 75) r.push({icon:'💾', title:'Implement 3-2-1 Backup Strategy', desc:'Automate daily backups to local + cloud with monthly restore testing to ensure guaranteed recovery.', priority:'Immediate'});
+  if (dp['Endpoints'] < 70) r.push({icon:'💻', title:'Endpoint Management Platform', desc:'Deploy MDM and EDR across all devices — including staff mobile phones — for full visibility and control.', priority:'Short-term'});
+  if (dp['Network'] < 70) r.push({icon:'🌐', title:'Network Audit & Segmentation', desc:'Replace consumer-grade equipment, segment guest from staff networks, and review firewall rules.', priority:'Short-term'});
+  if (dp['Compliance'] < 70) r.push({icon:'📋', title:'Security Awareness Training', desc:'Launch a quarterly cybersecurity training programme with phishing simulations to reduce human error risk.', priority:'Medium-term'});
+  r.push({icon:'🛠️', title:'Proactive Managed IT Services', desc:'Shift from reactive break-fix to a fully managed model with 24/7 monitoring, patching, and helpdesk support.', priority:'Immediate'});
+  return r.slice(0,6);
+}
+
+function renderReport(data) {
+  const { totalScore, domainPct, findings, recs } = data;
+
+  document.getElementById('report-client-name').textContent = clientData.name + ' — ' + clientData.industry;
+  document.getElementById('report-date').textContent = 'Assessment Date: ' + new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'});
+
+  document.getElementById('score-val').textContent = totalScore;
+  const arc = document.getElementById('score-arc');
+  const circumference = 2 * Math.PI * 42;
+  const offset = circumference * (1 - totalScore / 100);
+  arc.setAttribute('stroke-dasharray', circumference);
+  arc.setAttribute('stroke-dashoffset', offset);
+
+  let color, headline, summary, badgeClass, badgeText;
+  if (totalScore >= 80) {
+    color = '#22c55e'; headline = 'Strong IT Posture'; badgeText = 'Low Risk'; badgeClass = 'background:#f0fdf4;color:#166534;';
+    summary = 'Your IT environment demonstrates solid security practices and operational resilience. Maintain momentum and address the minor gaps identified below.';
+  } else if (totalScore >= 60) {
+    color = '#eab308'; headline = 'Moderate Risk Identified'; badgeText = 'Medium Risk'; badgeClass = 'background:#fefce8;color:#854d0e;';
+    summary = 'Several important gaps require attention. Left unaddressed, these vulnerabilities could lead to a security incident, data loss, or compliance failure within 12 months.';
+  } else if (totalScore >= 40) {
+    color = '#f97316'; headline = 'Significant Vulnerabilities Found'; badgeText = 'High Risk'; badgeClass = 'background:#fff7ed;color:#9a3412;';
+    summary = 'Critical security and operational gaps exist across multiple domains. Immediate action is required to protect the business from ransomware, data loss, and regulatory penalties.';
+  } else {
+    color = '#ef4444'; headline = 'Critical Risk — Immediate Action Required'; badgeText = 'Critical Risk'; badgeClass = 'background:#fef2f2;color:#991b1b;';
+    summary = 'The assessment reveals critical deficiencies across core IT domains. This organization is at immediate risk of a significant cyber incident, data loss, or compliance violation.';
+  }
+  arc.setAttribute('stroke', color);
+  document.getElementById('score-headline').textContent = headline;
+  document.getElementById('score-summary').textContent = summary;
+  const badge = document.getElementById('score-badge');
+  badge.textContent = badgeText;
+  badge.style.cssText = badgeClass + 'padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;';
+
+  const domainColors = {
+    'Security':'#3b82f6','Cloud & Backup':'#8b5cf6','Network':'#06b6d4',
+    'Endpoints':'#f97316','Compliance':'#ec4899','IT Support':'#22c55e'
+  };
+  const dsContainer = document.getElementById('domain-scores');
+  dsContainer.innerHTML = '';
+  Object.entries(domainPct).forEach(([d, pct]) => {
+    const barColor = pct >= 75 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444';
+    dsContainer.innerHTML += `<div class="ds-card">
+      <div class="ds-name">${d}</div>
+      <div class="ds-score" style="color:${barColor}">${pct}<span style="font-size:13px;color:var(--color-text-secondary)">/100</span></div>
+      <div class="ds-bar-wrap"><div class="ds-bar" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>`;
+  });
+
+  const fl = document.getElementById('findings-list');
+  fl.innerHTML = '';
+  findings.forEach(f => {
+    fl.innerHTML += `<div class="finding-card ${f.sev}">
+      <span class="finding-sev sev-${f.sev}">${f.sev.charAt(0).toUpperCase()+f.sev.slice(1)}</span>
+      <div class="finding-body"><div class="finding-title">${f.title}</div><div class="finding-desc">${f.desc}</div></div>
+    </div>`;
+  });
+
+  const rg = document.getElementById('rec-grid');
+  rg.innerHTML = '';
+  recs.forEach(r => {
+    const pc = r.priority === 'Immediate' ? 'priority-immediate' : r.priority === 'Short-term' ? 'priority-short' : 'priority-medium';
+    rg.innerHTML += `<div class="rec-card">
+      <div class="rec-icon">${r.icon}</div>
+      <div class="rec-title">${r.title}</div>
+      <div class="rec-desc">${r.desc}</div>
+      <span class="rec-priority ${pc}">${r.priority}</span>
+    </div>`;
+  });
+}
+
+function resetTool() {
+  answers = {};
+  currentQ = 0;
+  clientData = {};
+  showPhase('phase-welcome');
+}
+</script>
+</body>
+</html>
+

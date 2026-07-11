@@ -1,0 +1,43 @@
+{
+  "templateSource": "design/templates/wisp-template-cleaned.docx",
+  "generatedAt": "2026-06-28T00:00:00Z",
+  "firm": {
+    "companyName": "Current Fiscal LLC",
+    "principalOperatingOfficer": "",
+    "dataSecurityCoordinator": "Sarah Chen",
+    "publicInformationOfficer": "Melissa Grant",
+    "signatureTitle": "Managing Member"
+  },
+  "mergeFields": {
+    "companyName": "Current Fiscal LLC",
+    "principalOperatingOfficer": "",
+    "dataSecurityCoordinator": "Sarah Chen",
+    "publicInformationOfficer": "Melissa Grant",
+    "signatureTitle": "Managing Member"
+  },
+  "blocks": {
+    "objective": "<p>Our objective, in the development and implementation of this comprehensive Written Information Security Plan (WISP), is to create effective administrative, technical, and physical safeguards for the protection of the Personally Identifiable Information retained by Current Fiscal LLC.</p><p>This WISP is intended to document how the firm protects sensitive data across operational, technical, and administrative workflows.</p><ul><li>Social Security number, date of birth, or employment data</li><li>Driver's license or state-issued identification numbers</li><li>Financial account, tax filing, payroll, and related confidential records</li></ul>",
+    "purpose": "<p>The purpose of this WISP is to:</p><ol><li>Protect the confidentiality of retained PII.</li><li>Reduce the risk of unauthorized access, misuse, or loss.</li><li>Document the operational safeguards the firm uses to secure client and employee information.</li></ol>",
+    "scope": "<p>The scope of this WISP is limited to the operational, technical, and administrative controls used by Current Fiscal LLC to identify, manage, and reduce risks involving retained PII.</p><ol><li>Identify internal and external threats to retained PII.</li><li>Assess the sensitivity of the information and likely impact of compromise.</li><li>Evaluate the adequacy of current safeguards and update them when conditions change.</li></ol>",
+    "officials-dsc": "<p>Current Fiscal LLC designates Sarah Chen as the Data Security Coordinator (DSC). The DSC is responsible for implementing, supervising, and maintaining the firm's information security program.</p><ol><li>Implement and maintain the WISP.</li><li>Review where PII is stored, transmitted, and processed.</li><li>Verify training and policy compliance across personnel.</li><li>Review service-provider safeguards and update the plan when business practices materially change.</li></ol>",
+    "officials-pio": "<p>Current Fiscal LLC designates Melissa Grant as the Public Information Officer (PIO). The PIO coordinates approved outward-facing communications relating to security incidents and information-handling issues.</p><ul><li>Client communications approved by the firm.</li><li>Statements to law enforcement and regulators when necessary.</li><li>Approved public or media communications.</li></ul>",
+    "inside-firm-intro": "<p>To reduce internal risks to the security, confidentiality, and integrity of retained records containing PII, Current Fiscal LLC maintains the following internal safeguards and handling procedures.</p>",
+    "inside-firm-collection": "<p>Current Fiscal LLC collects and retains only the PII necessary to support legitimate business, tax, accounting, payroll, and compliance activities.</p><ol><li>Access to retained PII is limited to personnel with a legitimate business need.</li><li>The DSC maintains awareness of where PII is stored across workstations, cloud tools, portals, and paper records.</li><li>Paper and electronic records are retained only as long as operational, legal, or regulatory requirements require.</li><li>Records are securely destroyed at the end of their retention period using approved disposal methods.</li></ol>",
+    "inside-firm-personnel": "<p>A current copy of the WISP is distributed to personnel whose responsibilities require understanding the firm's information security safeguards.</p><ul><li>Personnel are expected to follow the firm's confidentiality and data-handling requirements.</li><li>Training and acknowledgement may be required before access to sensitive information is granted.</li><li>Access rights are reviewed when roles change or employment ends.</li></ul>",
+    "inside-firm-disclosure": "<ol><li>PII is disclosed only when appropriately authorized, authenticated, or otherwise permitted by law.</li><li>Paper and electronic records containing PII must remain secured during on-site and approved off-site handling.</li><li>Third parties receiving PII are limited to the access necessary to perform their authorized role.</li></ol>",
+    "inside-firm-reportable": "<ol><li>If a reportable security event occurs, the DSC coordinates internal review and determines what safeguard changes are needed.</li><li>Appropriate insurance, forensic, legal, and response resources may be engaged depending on the incident.</li><li>Required communications with regulators, tax agencies, or law enforcement are coordinated through designated firm leadership.</li></ol>",
+    "outside-firm-intro": "<p>To reduce external risks to the security, confidentiality, and integrity of retained records containing PII, Current Fiscal LLC maintains the following external-facing safeguards.</p>",
+    "outside-firm-network": "<ol><li>Firewall, endpoint protection, and security-update controls are maintained on systems that access or store retained PII.</li><li>Logging and monitoring are used where appropriate to detect unauthorized access.</li><li>Security reviews are performed periodically to confirm current controls remain adequate.</li></ol>",
+    "outside-firm-access": "<ol><li>Access to firm systems is limited to authorized users.</li><li>Multi-factor authentication is used where appropriate for remote, administrative, or sensitive systems access.</li><li>Passwords must be unique, strong, and managed under firm policy.</li></ol>",
+    "outside-firm-exchange": "<ol><li>PII is not sent in unprotected plain-text form.</li><li>Secure portals, encrypted delivery methods, or password-protected workflows are used when transmitting sensitive information.</li><li>Where password protection is used, passwords are shared separately from the protected file.</li></ol>",
+    "outside-firm-wifi": "<ol><li>Firm Wi-Fi uses strong encryption and password-protected access.</li><li>Any guest Wi-Fi is segregated from internal work systems.</li><li>Wireless-capable office devices must not rely on default credentials.</li></ol>",
+    "outside-firm-remote": "<ol><li>Remote-access tools require firm approval and secure authentication.</li><li>Remote sessions should use encrypted traffic and approved access methods.</li><li>Additional restrictions may be imposed based on risk conditions.</li></ol>",
+    "outside-firm-devices": "<ol><li>New connected devices are reviewed for suitability before joining the network.</li><li>Auto-run features are disabled where feasible on removable-media interfaces.</li><li>Devices leaving service are securely erased or destroyed as appropriate.</li></ol>",
+    "outside-firm-training": "<p>Personnel are trained to protect the privacy and confidentiality of retained PII and to follow the firm's procedures for handling records, systems access, and security incidents.</p><p>Training is refreshed periodically so personnel remain aligned with firm expectations.</p>"
+  },
+  "attachments": [],
+  "prototypeSupport": {
+    "supportedToday": [],
+    "pendingTemplateAlignment": []
+  }
+}
