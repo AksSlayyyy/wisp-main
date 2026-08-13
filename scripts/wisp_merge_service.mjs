@@ -27,6 +27,21 @@ const CHROME_CANDIDATES = [
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
 ];
 
+function signatureFontDataUrl(fileName) {
+  try {
+    return "data:font/ttf;base64," + readFileSync(path.join(ROOT, "assets", "fonts", fileName)).toString("base64");
+  } catch {
+    return "";
+  }
+}
+
+const SIGNATURE_FONT_DATA_URLS = {
+  handwritten: signatureFontDataUrl("signature-handwritten.ttf"),
+  classic: signatureFontDataUrl("signature-classic.ttf"),
+  elegant: signatureFontDataUrl("signature-elegant.ttf"),
+  casual: signatureFontDataUrl("signature-casual.ttf"),
+};
+
 function sendJson(res, status, payload) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -278,7 +293,7 @@ function buildPreviewHtml(preview) {
 }
 
 
-function buildDownloadPreviewHtml(preview) {
+function buildDownloadPreviewHtml(preview, signatures = []) {
   const pages = Array.isArray(preview?.pages) ? preview.pages : [];
   const coverPage = pages.find((page) => page?.isCover) || null;
   const signaturePage = pages.find((page) => !page?.isCover && (page?.layout === "irs-signature-body" || String(page?.title || "").trim() === "Signatures")) || null;
@@ -381,12 +396,25 @@ function buildDownloadPreviewHtml(preview) {
     const blocks = Array.isArray(page?.blocks) ? page.blocks : [];
     const sections = blocks.filter((block) => block?.kind === "signature-section");
     if (!sections.length) return "";
+    const saved = Array.isArray(signatures) ? signatures : [];
     const items = sections.map((block) => {
       const name = escapeHtml(block?.name || "");
-      const title = escapeHtml(block?.title || "");
+      const titleText = String(block?.title || "");
+      const title = escapeHtml(titleText);
+      const signature = saved.find((entry) => {
+        const role = String(entry?.signer_role || "");
+        return role === titleText || (role === "Principal Operating Officer" && titleText.includes("Principal Operating Officer"));
+      });
+      let mark = "";
+      if (signature?.signature_method === "draw" && String(signature.signature_data || "").startsWith("data:image/")) {
+        mark = `<img class="export-signature-image" src="${escapeHtml(signature.signature_data)}" alt="Signed by ${name}" />`;
+      } else if (signature?.signature_data) {
+        const font = ["caveat", "sacramento", "dancing", "segoe", "formal"].includes(String(signature.signature_font || "")) ? String(signature.signature_font) : "caveat";
+        mark = `<span class="export-signature-typed export-signature-font-${font}">${escapeHtml(signature.signature_data)}</span>`;
+      }
       return `
         <section class="export-signature-section">
-          <div class="export-signature-line"></div>
+          <div class="export-signature-line">${mark}</div>
           <p class="export-signature-name">${name}</p>
           <p class="export-signature-title">${title}</p>
         </section>
@@ -467,10 +495,23 @@ function buildDownloadPreviewHtml(preview) {
     .export-docx-list li { margin: 0 0 5px; font-size: 11.25px; line-height: 1.32; }
     .export-docx-list.is-ordered { list-style-type: upper-alpha; margin-left: 21px; }
     .export-docx-list.is-ordered li::marker { color: #123f69; font-weight: 700; }
-    .export-signature-section { margin: 28px 0 22px; break-inside: avoid; page-break-inside: avoid; }
-    .export-signature-line { width: 3.3in; max-width: 100%; border-top: 1px solid #7a8997; margin-bottom: 8px; }
-    .export-signature-name { margin: 0 0 4px; color: #10253a; font-size: 11.4px; font-weight: 700; }
-    .export-signature-title { margin: 0; color: #4d6176; font-size: 10.7px; }
+    .export-signature-block { margin: 16px 0 0; padding: 0; }
+    .export-signature-block .export-docx-heading { margin: 0 0 12px; font-size: 18px; }
+    .export-signature-section { width: 3.7in; max-width: 100%; margin: 0 0 16px; break-inside: avoid; page-break-inside: avoid; }
+    .export-signature-line { display: flex; align-items: flex-end; width: 100%; height: 0.55in; border-bottom: 1px solid #5a7085; }
+    .export-signature-image { display: block; width: auto; max-width: 2.25in; height: auto; max-height: 0.5in; object-fit: contain; object-position: left bottom; }
+    @font-face { font-family: "EasyWisp Handwritten"; src: url("${SIGNATURE_FONT_DATA_URLS.handwritten}") format("truetype"); }
+    @font-face { font-family: "EasyWisp Classic"; src: url("${SIGNATURE_FONT_DATA_URLS.classic}") format("truetype"); }
+    @font-face { font-family: "EasyWisp Elegant"; src: url("${SIGNATURE_FONT_DATA_URLS.elegant}") format("truetype"); }
+    @font-face { font-family: "EasyWisp Casual"; src: url("${SIGNATURE_FONT_DATA_URLS.casual}") format("truetype"); }
+    .export-signature-typed { display: block; padding: 0 0 1px 8px; color: #111; font-size: 23px; line-height: 1; }
+    .export-signature-font-caveat { font-family: "EasyWisp Handwritten", cursive; }
+    .export-signature-font-sacramento { font-family: "EasyWisp Classic", cursive; }
+    .export-signature-font-dancing { font-family: "EasyWisp Elegant", cursive; }
+    .export-signature-font-segoe { font-family: "EasyWisp Casual", cursive; }
+    .export-signature-font-formal { font-family: Georgia, "Times New Roman", serif; font-style: italic; }
+    .export-signature-name { margin: 5px 0 2px; color: #10253a; font-size: 12.2px; font-weight: 700; }
+    .export-signature-title { margin: 0; color: #4d6176; font-size: 11.2px; }
   </style>
 </head>
 <body>${coverMarkup}${bodyMarkup}</body>
@@ -589,13 +630,13 @@ function runOfficialPreview(payload) {
   });
 }
 
-function renderPdfBuffer(preview, tempDir, slug) {
+function renderPdfBuffer(preview, tempDir, slug, signatures = []) {
   const chromePath = findChromeExecutable();
   if (!chromePath) return Promise.resolve(null);
 
   const htmlPath = path.join(tempDir, `${slug}-preview.html`);
   const pdfPath = path.join(tempDir, `${slug}-preview.pdf`);
-  writeFileSync(htmlPath, buildDownloadPreviewHtml(preview), "utf8");
+  writeFileSync(htmlPath, buildDownloadPreviewHtml(preview, signatures), "utf8");
 
   return new Promise((resolve, reject) => {
     const child = spawn(chromePath, [
@@ -704,7 +745,7 @@ const server = http.createServer(async (req, res) => {
         let pdfBase64 = "";
         let pdfRenderer = "";
         try {
-          const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug);
+          const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug, Array.isArray(payload?.signatures) ? payload.signatures : []);
           if (renderedPdf) {
             pdfBase64 = renderedPdf.toString("base64");
             pdfRenderer = "structured-preview";
