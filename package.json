@@ -9,6 +9,7 @@
     "wisp:merge-prototype": "python scripts/merge_wisp_template.py design/templates/wisp-template-cleaned.docx design/templates/wisp-template-merged-prototype.docx design/templates/sample-merge-data.json",
     "wisp:merge-service": "python scripts/wisp_merge_service.py",
     "dev": "node scripts/local-dev-server.mjs",
+    "build": "node scripts/build-cloudflare-static.mjs",
     "deploy:cloudflare:zip": "node scripts/prepare-cloudflare-pages-upload.mjs"
   },
   "dependencies": {
