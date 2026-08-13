@@ -3,7 +3,7 @@
   "name": "wisp-main",
   "compatibility_date": "2026-08-13",
   "assets": {
-    "directory": "./dist",
+    "directory": "./cloudflare-dist",
     "not_found_handling": "single-page-application"
   }
 }

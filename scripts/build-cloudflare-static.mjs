@@ -2,7 +2,9 @@ import { cp, mkdir, rm, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = process.cwd();
-const outputDirectory = resolve(root, "dist");
+// A dedicated directory avoids Cloudflare's restored build-output cache from
+// ever carrying obsolete Pages-only files such as _redirects into a Worker build.
+const outputDirectory = resolve(root, "cloudflare-dist");
 const files = [
   "index.html",
   "app.js",
