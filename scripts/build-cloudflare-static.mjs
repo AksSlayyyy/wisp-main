@@ -9,7 +9,6 @@ const files = [
   "styles.css",
   "config.js",
   "supabase-client.js",
-  "_redirects",
 ];
 const directories = ["assets/fonts", "design/training"];
 const optionalFiles = ["design/auth-hero-bg.png"];
