@@ -1,5 +1,0 @@
-name = "easywisp-staging"
-compatibility_date = "2026-08-12"
-
-# Static-only staging deployment. Cloudflare Pages serves the repository root.
-# The local WISP merge service is intentionally not deployed here.
