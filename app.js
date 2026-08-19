@@ -2,6 +2,7 @@ let deleteDocument = async () => {};
 let fetchBootstrapState = async () => null;
 let hasSupabaseAuth = () => false;
 let getCurrentAccessToken = async () => "";
+let signedWispPdfRefreshPromise = null;
 let saveRiskAssessmentDraft = async () => null;
 let saveWispDraft = async () => null;
 let finalizeWispBuild = async () => null;
@@ -5736,6 +5737,10 @@ function completedWispSignatureRevisionKey() {
   );
 }
 async function openCompletedWispPreview() {
+  if (state.builderSigningPdfBusy) {
+    showToast("The signed PDF is still being updated. Please wait a moment.", "info");
+    return;
+  }
   const file = state.wispProject?.latest_generated_file;
   if (!file?.downloadUrl) {
     showToast("The finalized PDF is not available yet.", "error");
@@ -5756,7 +5761,10 @@ async function openCompletedWispPreview() {
       localStorage.setItem(revisionKey, "ready");
     } catch (error) {
       console.warn("Signed PDF layout refresh failed", error);
-      showToast("The signed PDF could not be refreshed right now.", "error");
+      showToast(
+        error?.message || "The signed PDF could not be refreshed right now.",
+        "error",
+      );
       return;
     } finally {
       state.builderSigningPdfBusy = false;
@@ -6395,6 +6403,15 @@ function bindWispSignatureDialog() {
   canvas.addEventListener("pointercancel", drawEnd);
 }
 async function rebuildCompletedWispSignaturePdf(signatures) {
+  if (signedWispPdfRefreshPromise) return signedWispPdfRefreshPromise;
+  signedWispPdfRefreshPromise = rebuildCompletedWispSignaturePdfImpl(signatures);
+  try {
+    return await signedWispPdfRefreshPromise;
+  } finally {
+    signedWispPdfRefreshPromise = null;
+  }
+}
+async function rebuildCompletedWispSignaturePdfImpl(signatures) {
   const mergePreviewUrl = getMergePreviewUrl();
   if (!mergePreviewUrl)
     throw new Error("The branded WISP PDF renderer is not configured yet.");
@@ -6407,8 +6424,14 @@ async function rebuildCompletedWispSignaturePdf(signatures) {
       body: JSON.stringify({ ...getBuilderTemplateMergePayload(), signatures }),
       signal: controller.signal,
     });
-    if (!response.ok)
-      throw new Error("The branded WISP PDF could not be rebuilt for signing.");
+    if (!response.ok) {
+      let message = "The branded WISP PDF could not be rebuilt for signing.";
+      try {
+        const errorPayload = await response.json();
+        if (errorPayload?.error) message = errorPayload.error;
+      } catch {}
+      throw new Error(message);
+    }
     const result = await response.json();
     if (!result?.pdfBase64)
       throw new Error("The branded WISP PDF was not returned for signing.");
