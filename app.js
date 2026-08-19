@@ -1,6 +1,7 @@
 let deleteDocument = async () => {};
 let fetchBootstrapState = async () => null;
 let hasSupabaseAuth = () => false;
+let getCurrentAccessToken = async () => "";
 let saveRiskAssessmentDraft = async () => null;
 let saveWispDraft = async () => null;
 let finalizeWispBuild = async () => null;
@@ -1381,6 +1382,24 @@ const LOCAL_ONBOARDING_COMPLETE_PREFIX = "easywisp.onboarding-complete:";
 function isLocalMergeServiceAvailable() {
   return ["127.0.0.1", "localhost"].includes(window.location.hostname);
 }
+function getMergePreviewUrl() {
+  const hostedRendererUrl = String(
+    window.__ENV__?.WISP_RENDERER_URL || "",
+  )
+    .trim()
+    .replace(/\/+$/, "");
+  if (hostedRendererUrl) return `${hostedRendererUrl}/merge-preview`;
+  if (isLocalMergeServiceAvailable())
+    return "http://127.0.0.1:8766/merge-preview";
+  return "";
+}
+async function getMergeRequestHeaders() {
+  const accessToken = await getCurrentAccessToken();
+  return {
+    "Content-Type": "application/json",
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
+}
 function onboardingCompletionKey(userId) {
   return `${LOCAL_ONBOARDING_COMPLETE_PREFIX}${userId || ""}`;
 }
@@ -2127,6 +2146,8 @@ async function bootstrapApp() {
         supabaseModule.removeWispAcknowledgementRequest ||
         removeWispAcknowledgementRequest;
       hasSupabaseAuth = supabaseModule.hasSupabaseAuth || hasSupabaseAuth;
+      getCurrentAccessToken =
+        supabaseModule.getCurrentAccessToken || getCurrentAccessToken;
       saveRiskAssessmentDraft =
         supabaseModule.saveRiskAssessmentDraft || saveRiskAssessmentDraft;
       saveWispDraft = supabaseModule.saveWispDraft || saveWispDraft;
@@ -5505,24 +5526,11 @@ async function buildHostedWispPdf(signatures = []) {
   return { blob: new Blob([await pdf.save()], { type: "application/pdf" }), fileName: `${fileStem}-wisp${signatures.length ? "-signed" : ""}.pdf` };
 }
 async function requestBuilderMergedDocx() {
-  if (!isLocalMergeServiceAvailable()) {
-    cleanupBuilderMergeDownloadUrl();
-    state.builderMergeStatus = "generating";
-    state.builderMergeMessage = "Generating your WISP PDF preview...";
-    render();
-    try {
-      const hostedPdf = await buildHostedWispPdf();
-      state.builderMergePdfBlob = hostedPdf.blob;
-      state.builderMergePdfUrl = URL.createObjectURL(hostedPdf.blob);
-      state.builderMergePdfFileName = hostedPdf.fileName;
-      state.builderMergeFileName = hostedPdf.fileName;
-      state.builderMergeStatus = "ready";
-      state.builderMergeMessage = "WISP PDF preview is ready.";
-      state.builderRenderedPageCount = 1;
-    } catch (error) {
-      state.builderMergeStatus = "unavailable";
-      state.builderMergeMessage = error?.message || "Unable to generate the WISP PDF preview.";
-    }
+  const mergePreviewUrl = getMergePreviewUrl();
+  if (!mergePreviewUrl) {
+    state.builderMergeStatus = "unavailable";
+    state.builderMergeMessage =
+      "The branded WISP PDF renderer is not configured yet.";
     render();
     return;
   }
@@ -5535,11 +5543,11 @@ async function requestBuilderMergedDocx() {
   state.builderRenderedPageCount = 0;
   render();
   try {
-    const controller = new AbortController(); // The local renderer creates the branded PDF, which can take a few seconds on first use.
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    const response = await fetch("http://127.0.0.1:8766/merge-preview", {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const response = await fetch(mergePreviewUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getMergeRequestHeaders(),
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
@@ -5586,12 +5594,12 @@ async function requestBuilderMergedDocx() {
     }
   } catch (error) {
     console.warn(
-      "[requestBuilderMergedDocx] merge unavailable, using fallback",
+      "[requestBuilderMergedDocx] merge unavailable",
       error?.message || error,
     );
     state.builderMergeStatus = "unavailable";
     state.builderMergeMessage =
-      error?.message || "The local merge service is unavailable.";
+      error?.message || "The branded WISP PDF renderer is unavailable.";
     state.builderMergeFileName = "";
     state.builderMergePreviewPages = [];
     state.builderRenderedPageCount = 0;
@@ -6387,22 +6395,17 @@ function bindWispSignatureDialog() {
   canvas.addEventListener("pointercancel", drawEnd);
 }
 async function rebuildCompletedWispSignaturePdf(signatures) {
-  if (!isLocalMergeServiceAvailable()) {
-    const hostedPdf = await buildHostedWispPdf(signatures);
-    return finalizeWispBuild(
-      { blob: hostedPdf.blob, fileName: hostedPdf.fileName, contentType: "application/pdf" },
-      {
-        ...getBuilderDraftMeta({ status: state.wispProject?.status || "completed", title: state.wispProject?.title || "Written Information Security Plan" }),
-        builderDrafts: state.builderDrafts,
-      },
-    );
-  }
+  const mergePreviewUrl = getMergePreviewUrl();
+  if (!mergePreviewUrl)
+    throw new Error("The branded WISP PDF renderer is not configured yet.");
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeout = setTimeout(() => controller.abort(), 60000);
   try {
-    const response = await fetch("http://127.0.0.1:8766/merge-preview", {
+    const response = await fetch(mergePreviewUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" }, // The renderer owns both the signature lines and marks, so they cannot drift apart.      body: JSON.stringify({ ...getBuilderTemplateMergePayload(), signatures }),      signal: controller.signal,
+      headers: await getMergeRequestHeaders(),
+      body: JSON.stringify({ ...getBuilderTemplateMergePayload(), signatures }),
+      signal: controller.signal,
     });
     if (!response.ok)
       throw new Error("The branded WISP PDF could not be rebuilt for signing.");

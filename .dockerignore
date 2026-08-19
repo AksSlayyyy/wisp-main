@@ -1,0 +1,11 @@
+node_modules
+dist
+cloudflare-dist
+tmp
+tmp-*
+.git
+.env
+.env.*
+*.zip
+scripts/__pycache__
+supabase/.temp

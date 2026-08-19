@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const HOST = process.env.WISP_MERGE_HOST || "127.0.0.1";
-const PORT = Number(process.env.WISP_MERGE_PORT || 8766);
+const HOST = process.env.WISP_MERGE_HOST || "0.0.0.0";
+const PORT = Number(process.env.PORT || process.env.WISP_MERGE_PORT || 8766);
 const ROOT = process.cwd();
 const TEMPLATE_PATH = path.join(ROOT, "design", "templates", "wisp-template-cleaned.docx");
 const MERGE_SCRIPT = path.join(ROOT, "scripts", "merge_wisp_template.py");
@@ -16,16 +16,24 @@ const OFFICIAL_PDF_PATH = path.join(ROOT, "design", "templates", "wisp-draft-pla
 const OFFICIAL_PREVIEW_SCRIPT = path.join(ROOT, "scripts", "build_irs_official_preview.py");
 const PYTHON_CANDIDATES = [
   process.env.WISP_PYTHON_PATH,
+  "/usr/bin/python3",
+  "/usr/local/bin/python3",
   "C:\Users\Kilometre Morales\AppData\Local\Python\bin\python.exe",
   "C:\Users\Kilometre Morales\AppData\Local\Python\bin\python3.exe",
   "C:\Windows\py.exe",
 ].filter(Boolean);
 const CHROME_CANDIDATES = [
+  process.env.WISP_CHROME_PATH,
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
   "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
 ];
+const REQUIRE_AUTH = process.env.WISP_REQUIRE_AUTH === "true";
+const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || "");
 
 function signatureFontDataUrl(fileName) {
   try {
@@ -47,9 +55,24 @@ function sendJson(res, status, payload) {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
   });
   res.end(JSON.stringify(payload));
+}
+
+async function authenticateRequest(req) {
+  if (!REQUIRE_AUTH) return true;
+  const authorization = String(req.headers.authorization || "");
+  if (!authorization.startsWith("Bearer ")) return false;
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
+    throw new Error("Renderer authentication is not configured.");
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: authorization,
+    },
+  });
+  return response.ok;
 }
 
 function sanitizeSlug(value) {
@@ -641,6 +664,7 @@ function renderPdfBuffer(preview, tempDir, slug, signatures = []) {
   return new Promise((resolve, reject) => {
     const child = spawn(chromePath, [
       "--headless=new",
+      "--no-sandbox",
       "--disable-gpu",
       "--allow-file-access-from-files",
       "--print-to-pdf-no-header",
@@ -677,7 +701,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
     return res.end();
   }
@@ -697,6 +721,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && req.url === "/merge") {
+    try {
+      if (!(await authenticateRequest(req)))
+        return sendJson(res, 401, { error: "Sign in is required to generate a WISP PDF." });
+    } catch (error) {
+      return sendJson(res, 503, { error: error instanceof Error ? error.message : String(error) });
+    }
     let body = "";
     req.on("data", (chunk) => {
       body += chunk.toString();
@@ -723,6 +753,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && req.url === "/merge-preview") {
+    try {
+      if (!(await authenticateRequest(req)))
+        return sendJson(res, 401, { error: "Sign in is required to generate a WISP PDF." });
+    } catch (error) {
+      return sendJson(res, 503, { error: error instanceof Error ? error.message : String(error) });
+    }
     let body = "";
     req.on("data", (chunk) => {
       body += chunk.toString();

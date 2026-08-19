@@ -2058,6 +2058,13 @@ export function hasSupabaseAuth() {
   return hasClient() && productionAuthEnabled;
 }
 
+export async function getCurrentAccessToken() {
+  if (!hasClient()) return "";
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data?.session?.access_token || "";
+}
+
 export async function signInWithPassword(email, password) {
   if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
   const { data, error } = await supabase.auth.signInWithPassword({
