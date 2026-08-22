@@ -2820,10 +2820,10 @@ button {
 }
 
 .app-sidebar .brand-mark {
-  width: 172px;
-  padding: 7px 9px;
-  border-radius: 10px;
-  background: #ffffff;
+  width: 184px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .app-sidebar-brand-copy span {
