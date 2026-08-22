@@ -6883,7 +6883,7 @@ function templateDownloadIcon() {
   return `    <svg viewBox="0 0 24 24" aria-hidden="true">      <path d="M12 5.1v8.8"></path>      <path d="m8.7 10.95 3.3 3.3 3.3-3.3"></path>      <path d="M6.2 18.7h11.6"></path>    </svg>  `;
 }
 function brandMark() {
-  return `<img class="brand-logo-image" src="/assets/brand/wispnow-logo.svg" alt="WispNow" />`;
+  return `<img class="brand-logo-image" src="/assets/brand/wispnow-logo.png" alt="WispNow" />`;
 }
 
 function applyWispNowBranding(root = document.body) {
@@ -6918,7 +6918,7 @@ function applyWispNowBranding(root = document.body) {
     .querySelectorAll(".public-ack-brand > span:first-child, .public-ack-state-header > span:first-child")
     .forEach((element) => {
       if (element.querySelector(".brand-logo-image")) return;
-      element.innerHTML = `<img class="brand-logo-image" src="/assets/brand/wispnow-logo.svg" alt="WispNow" />`;
+      element.innerHTML = `<img class="brand-logo-image" src="/assets/brand/wispnow-logo.png" alt="WispNow" />`;
     });
 }
 
