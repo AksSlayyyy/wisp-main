@@ -1,18 +1,18 @@
 {
   "meta": {
-    "title": "EasyWISP IRS Dirty Dozen Briefing",
+    "title": "WispNow IRS Dirty Dozen Briefing",
     "subtitle": "2026 Awareness Briefing",
     "version": "July 2026",
     "theme": "alert",
-    "output": "G:\\WISP\\design\\training\\easywisp-irs-dirty-dozen-briefing.pdf"
+    "output": "G:\\WISP\\design\\training\\WispNow-irs-dirty-dozen-briefing.pdf"
   },
   "slides": [
     {
       "layout": "cover",
       "eyebrow": "Risk Briefing Series",
       "title": "IRS Dirty Dozen",
-      "subtitle": "A sharper EasyWISP briefing on the scam patterns and tax schemes clients and staff should recognize early.",
-      "footerLeft": "EasyWISP risk awareness brief",
+      "subtitle": "A sharper WispNow briefing on the scam patterns and tax schemes clients and staff should recognize early.",
+      "footerLeft": "WispNow risk awareness brief",
       "footerRight": "Internal education asset"
     },
     {
@@ -163,7 +163,7 @@
         "Use this list as an awareness tool, not a one-time presentation.",
         "Keep reminding staff and clients that pressure and promised shortcuts are major warning signs.",
         "Route high-risk ideas and suspicious outreach through the right internal reviewers early.",
-        "Revisit the IRS list regularly as part of the firm's broader EasyWISP training cadence."
+        "Revisit the IRS list regularly as part of the firm's broader WispNow training cadence."
       ]
     }
   ]

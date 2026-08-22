@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 250" role="img" aria-labelledby="title desc">
+  <title id="title">WispNow</title>
+  <desc id="desc">WispNow wordmark with an emerald and ink-navy connection mark.</desc>
+  <style>
+    .word { font-family: Inter, Arial, Helvetica, sans-serif; font-weight: 800; letter-spacing: -8px; }
+  </style>
+  <text class="word" x="0" y="181" font-size="202" fill="#007a5a">Wisp</text>
+  <g transform="translate(472 16)">
+    <path d="M0 0h56v201H0z" fill="#007a5a"/>
+    <path d="M74 0h56v201H74z" fill="#102b3a"/>
+    <path d="M56 0h18v79l-35 53v69H0v-78l56-84z" fill="#fbfcfa"/>
+  </g>
+  <text class="word" x="637" y="181" font-size="202" fill="#102b3a">Now</text>
+</svg>

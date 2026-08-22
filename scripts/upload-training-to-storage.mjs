@@ -18,19 +18,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 const TRAINING_FILES = [
   {
     asset_key: "annual_staff_training",
-    localPath: "design/training/easywisp-staff-security-awareness-training.pdf",
+    localPath: "design/training/WispNow-staff-security-awareness-training.pdf",
     storagePath: "platform/annual_staff_training.pdf",
     contentType: "application/pdf",
   },
   {
     asset_key: "phishing_awareness_training",
-    localPath: "design/training/easywisp-phishing-awareness-training.pdf",
+    localPath: "design/training/WispNow-phishing-awareness-training.pdf",
     storagePath: "platform/phishing_awareness_training.pdf",
     contentType: "application/pdf",
   },
   {
     asset_key: "irs_dirty_dozen_briefing",
-    localPath: "design/training/easywisp-irs-dirty-dozen-briefing.pdf",
+    localPath: "design/training/WispNow-irs-dirty-dozen-briefing.pdf",
     storagePath: "platform/irs_dirty_dozen_briefing.pdf",
     contentType: "application/pdf",
   },

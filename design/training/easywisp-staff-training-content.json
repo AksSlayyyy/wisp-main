@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "EasyWISP Staff Security Awareness Training",
+    "title": "WispNow Staff Security Awareness Training",
     "subtitle": "Written Information Security Plan (WISP)",
     "version": "July 2026",
-    "output": "G:\\WISP\\design\\training\\easywisp-staff-security-awareness-training.pdf"
+    "output": "G:\\WISP\\design\\training\\WispNow-staff-security-awareness-training.pdf"
   },
   "slides": [
     {
@@ -11,7 +11,7 @@
       "eyebrow": "Annual Staff Training",
       "title": "Written Information Security Plan",
       "subtitle": "Keeping personnel informed, accountable, and ready to protect client information.",
-      "footerLeft": "EasyWISP training asset",
+      "footerLeft": "WispNow training asset",
       "footerRight": "Confidential internal training"
     },
     {

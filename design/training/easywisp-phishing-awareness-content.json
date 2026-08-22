@@ -1,10 +1,10 @@
 {
   "meta": {
-    "title": "EasyWISP Phishing Awareness Training",
+    "title": "WispNow Phishing Awareness Training",
     "subtitle": "Protect Yourself from Phishing",
     "version": "July 2026",
     "theme": "midnight",
-    "output": "G:\\WISP\\design\\training\\easywisp-phishing-awareness-training.pdf"
+    "output": "G:\\WISP\\design\\training\\WispNow-phishing-awareness-training.pdf"
   },
   "slides": [
     {
@@ -12,7 +12,7 @@
       "eyebrow": "Security Awareness Training",
       "title": "Protect Yourself from Phishing",
       "subtitle": "How to recognize fraudulent messages, avoid risky clicks, and respond fast when something goes wrong.",
-      "footerLeft": "EasyWISP phishing training",
+      "footerLeft": "WispNow phishing training",
       "footerRight": "Confidential internal training"
     },
     {
@@ -132,7 +132,7 @@
     {
       "layout": "bullets",
       "eyebrow": "Behavior Standard",
-      "title": "What EasyWISP expects from every employee",
+      "title": "What WispNow expects from every employee",
       "intro": "Phishing defense is part of daily operating discipline. Employees, contractors, and temporary personnel should treat suspicious communications as a normal security event that deserves prompt escalation, not private judgment alone.",
       "bullets": [
         "Stay skeptical of urgency, secrecy, payment changes, login prompts, and requests for PII.",

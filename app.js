@@ -557,8 +557,8 @@ const trainingLibrary = {
       actionPrimary: "View",
       actionSecondary: "Download",
       assetPath:
-        "design/training/easywisp-staff-security-awareness-training.pdf",
-      filename: "easywisp-staff-security-awareness-training.pdf",
+        "design/training/WispNow-staff-security-awareness-training.pdf",
+      filename: "WispNow-staff-security-awareness-training.pdf",
       previewLabel: "Mandatory staff training",
     },
     {
@@ -566,8 +566,8 @@ const trainingLibrary = {
       title: "[PDF] EasyWISP Phishing Awareness Training - 11 pages",
       actionPrimary: "View",
       actionSecondary: "Download",
-      assetPath: "design/training/easywisp-phishing-awareness-training.pdf",
-      filename: "easywisp-phishing-awareness-training.pdf",
+      assetPath: "design/training/WispNow-phishing-awareness-training.pdf",
+      filename: "WispNow-phishing-awareness-training.pdf",
       previewLabel: "Phishing awareness module",
     },
     {
@@ -575,8 +575,8 @@ const trainingLibrary = {
       title: "[PDF] EasyWISP IRS Dirty Dozen Briefing - 11 pages",
       actionPrimary: "View",
       actionSecondary: "Download",
-      assetPath: "design/training/easywisp-irs-dirty-dozen-briefing.pdf",
-      filename: "easywisp-irs-dirty-dozen-briefing.pdf",
+      assetPath: "design/training/WispNow-irs-dirty-dozen-briefing.pdf",
+      filename: "WispNow-irs-dirty-dozen-briefing.pdf",
       previewLabel: "IRS Dirty Dozen briefing",
     },
     {
@@ -6883,7 +6883,53 @@ function templateDownloadIcon() {
   return `    <svg viewBox="0 0 24 24" aria-hidden="true">      <path d="M12 5.1v8.8"></path>      <path d="m8.7 10.95 3.3 3.3 3.3-3.3"></path>      <path d="M6.2 18.7h11.6"></path>    </svg>  `;
 }
 function brandMark() {
-  return `    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">      <path d="M16 2.5L27 6.5v7c0 5.5-4.2 9.8-11 11.5-6.8-1.7-11-6-11-11.5v-7L16 2.5Z" fill="currentColor" opacity=".12"/>      <path d="M16 2.5L27 6.5v7c0 5.5-4.2 9.8-11 11.5-6.8-1.7-11-6-11-11.5v-7L16 2.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>      <path d="M21.5 12.5l-6.5 6.5-4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>    </svg>  `;
+  return `<img class="brand-logo-image" src="/assets/brand/wispnow-logo.svg" alt="WispNow" />`;
+}
+
+function applyWispNowBranding(root = document.body) {
+  if (!root) return;
+  if (root.nodeType === Node.TEXT_NODE) {
+    const parent = root.parentElement;
+    if (parent && !["SCRIPT", "STYLE", "TEXTAREA"].includes(parent.tagName)) {
+      root.nodeValue = (root.nodeValue || "").replace(/EasyWISP/gi, "WispNow");
+    }
+    return;
+  }
+  const scope = root.nodeType === Node.ELEMENT_NODE ? root : root.parentElement || document.body;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || ["SCRIPT", "STYLE", "TEXTAREA"].includes(parent.tagName)) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return /EasyWISP/i.test(node.nodeValue || "")
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const matches = [];
+  while (walker.nextNode()) matches.push(walker.currentNode);
+  matches.forEach((node) => {
+    node.nodeValue = node.nodeValue.replace(/EasyWISP/gi, "WispNow");
+  });
+
+  if (!scope.querySelectorAll) return;
+  scope
+    .querySelectorAll(".public-ack-brand > span:first-child, .public-ack-state-header > span:first-child")
+    .forEach((element) => {
+      if (element.querySelector(".brand-logo-image")) return;
+      element.innerHTML = `<img class="brand-logo-image" src="/assets/brand/wispnow-logo.svg" alt="WispNow" />`;
+    });
+}
+
+function installWispNowBranding() {
+  applyWispNowBranding();
+  const observer = new MutationObserver((records) => {
+    records.forEach((record) => {
+      record.addedNodes.forEach((node) => applyWispNowBranding(node));
+    });
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 function appNav() {
   const riskActive = ["welcome", "assessment", "review", "results"].includes(
@@ -10816,6 +10862,7 @@ async function submitPublicAcknowledgement() {
   }
 }
 const publicAcknowledgementRoute = getPublicAcknowledgementRoute();
+installWispNowBranding();
 if (publicAcknowledgementRoute)
   bootstrapPublicAcknowledgement(publicAcknowledgementRoute);
 else bootstrapApp();

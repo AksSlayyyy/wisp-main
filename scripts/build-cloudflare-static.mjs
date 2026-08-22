@@ -13,7 +13,10 @@ const files = [
   "supabase-client.js",
 ];
 const directories = ["assets/fonts", "design/training"];
-const optionalFiles = ["design/auth-hero-bg.png"];
+const optionalFiles = [
+  "design/auth-hero-bg.png",
+  "assets/brand/wispnow-logo.svg",
+];
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });

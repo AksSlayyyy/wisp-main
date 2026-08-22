@@ -251,6 +251,12 @@ button {
   letter-spacing: -0.015em;
 }
 
+.brand-logo-image {
+  display: block;
+  width: 142px;
+  height: auto;
+}
+
 .brand-mark {
   display: grid;
   width: 28px;

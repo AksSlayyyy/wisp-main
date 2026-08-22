@@ -9,8 +9,8 @@ const TRAINING_ASSET_PRESENTATIONS = [
     match: (item) =>
       item.asset_type === "mandatory" &&
       /annual staff training/i.test(item.title || ""),
-    assetPath: "design/training/easywisp-staff-security-awareness-training.pdf",
-    filename: "easywisp-staff-security-awareness-training.pdf",
+    assetPath: "design/training/WispNow-staff-security-awareness-training.pdf",
+    filename: "WispNow-staff-security-awareness-training.pdf",
     previewLabel: "Mandatory staff training",
     kind: "document",
   },
@@ -18,16 +18,16 @@ const TRAINING_ASSET_PRESENTATIONS = [
     assetKey: "phishing_awareness_training",
     match: (item) =>
       item.asset_type === "video" && /phishing/i.test(item.title || ""),
-    assetPath: "design/training/easywisp-phishing-awareness-training.pdf",
-    filename: "easywisp-phishing-awareness-training.pdf",
+    assetPath: "design/training/WispNow-phishing-awareness-training.pdf",
+    filename: "WispNow-phishing-awareness-training.pdf",
     previewLabel: "Phishing awareness module",
     kind: "document",
   },
   {
     assetKey: "irs_dirty_dozen_briefing",
     match: (item) => /dirty dozen/i.test(item.title || ""),
-    assetPath: "design/training/easywisp-irs-dirty-dozen-briefing.pdf",
-    filename: "easywisp-irs-dirty-dozen-briefing.pdf",
+    assetPath: "design/training/WispNow-irs-dirty-dozen-briefing.pdf",
+    filename: "WispNow-irs-dirty-dozen-briefing.pdf",
     previewLabel: "IRS Dirty Dozen briefing",
     kind: "document",
   },
