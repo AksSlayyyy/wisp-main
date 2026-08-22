@@ -351,7 +351,7 @@ function footer(primary) {
 function topbar() {
   return `
     <header class="topbar">
-      <div class="brand"><img class="brand-logo-image" src="../assets/brand/wispnow-logo.png" alt="WispNow" /></div>
+      <div class="brand"><img class="brand-logo-image" src="../assets/brand/wispnow-logo-cropped.png" alt="WispNow" /></div>
       <div class="topbar-actions">
         <span class="save-state"><span class="save-dot"></span> Saved just now</span>
         <button class="btn secondary small" type="button">Save & exit</button>
