@@ -16,6 +16,7 @@ const directories = ["assets/fonts", "design/training"];
 const optionalFiles = [
   "design/auth-hero-bg.png",
   "assets/brand/wispnow-logo-cropped.png",
+  "assets/brand/wispnow-logo-sidebar-cropped.png",
 ];
 
 await rm(outputDirectory, { recursive: true, force: true });
