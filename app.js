@@ -6,6 +6,7 @@ let signedWispPdfRefreshPromise = null;
 let saveRiskAssessmentDraft = async () => null;
 let saveWispDraft = async () => null;
 let finalizeWispBuild = async () => null;
+let queueWispGeneration = async () => null;
 let activateWispProject = async () => null;
 let saveWispSignature = async () => {
   throw new Error("WISP signature saving is not available yet.");
@@ -20,6 +21,7 @@ let completePublicWispAcknowledgementRequest = async () => {
   throw new Error("Acknowledgement requests are not available yet.");
 };
 let getWispPdfPreviewUrl = async () => null;
+let getPublicWispPdfPreviewUrl = async () => null;
 let fetchWispAcknowledgementRequests = async () => [];
 let removeWispAcknowledgementRequest = async () => [];
 let uploadWispAttachments = async () => [];
@@ -1380,6 +1382,9 @@ const LOCAL_COMPANY_LOGO_KEY = "easywisp.settings.company-logo";
 const LOCAL_RISK_DRAFT_KEY = "easywisp.risk-draft";
 const LOCAL_WISP_DRAFT_KEY = "easywisp.builder-draft";
 const LOCAL_ONBOARDING_COMPLETE_PREFIX = "easywisp.onboarding-complete:";
+function localCacheKey(base) {
+  return `${base}:${window.__ENV__?.SUPABASE_URL || window.location.origin}:${state.authUser?.id || "anonymous"}:${state.firmProfile?.id || "no-firm"}`;
+}
 function isLocalMergeServiceAvailable() {
   return ["127.0.0.1", "localhost"].includes(window.location.hostname);
 }
@@ -1402,7 +1407,7 @@ async function getMergeRequestHeaders() {
   };
 }
 function onboardingCompletionKey(userId) {
-  return `${LOCAL_ONBOARDING_COMPLETE_PREFIX}${userId || ""}`;
+  return `${LOCAL_ONBOARDING_COMPLETE_PREFIX}${window.__ENV__?.SUPABASE_URL || window.location.origin}:${userId || ""}`;
 }
 function hasCachedOnboardingCompletion(userId) {
   try { return Boolean(userId && localStorage.getItem(onboardingCompletionKey(userId)) === "1"); } catch { return false; }
@@ -1421,7 +1426,7 @@ function isStagingOnboardingResetEnabled() {
 }
 function loadLocalCompanyLogo() {
   try {
-    const raw = localStorage.getItem(LOCAL_COMPANY_LOGO_KEY);
+    const raw = localStorage.getItem(localCacheKey(LOCAL_COMPANY_LOGO_KEY));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed?.name || !parsed?.previewUrl) return null;
@@ -1432,15 +1437,15 @@ function loadLocalCompanyLogo() {
 }
 function saveLocalCompanyLogo(logo) {
   try {
-    if (!logo) localStorage.removeItem(LOCAL_COMPANY_LOGO_KEY);
-    else localStorage.setItem(LOCAL_COMPANY_LOGO_KEY, JSON.stringify(logo));
+    if (!logo) localStorage.removeItem(localCacheKey(LOCAL_COMPANY_LOGO_KEY));
+    else localStorage.setItem(localCacheKey(LOCAL_COMPANY_LOGO_KEY), JSON.stringify(logo));
   } catch {
     // Ignore storage quota / privacy mode issues.
   }
 }
 function loadLocalRiskDraft() {
   try {
-    const raw = localStorage.getItem(LOCAL_RISK_DRAFT_KEY);
+    const raw = localStorage.getItem(localCacheKey(LOCAL_RISK_DRAFT_KEY));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed?.form || typeof parsed.form !== "object") return null;
@@ -1452,7 +1457,7 @@ function loadLocalRiskDraft() {
 function saveLocalRiskDraft(form = state.form) {
   try {
     localStorage.setItem(
-      LOCAL_RISK_DRAFT_KEY,
+      localCacheKey(LOCAL_RISK_DRAFT_KEY),
       JSON.stringify({
         form: structuredClone(form),
         updatedAt: new Date().toISOString(),
@@ -1473,7 +1478,7 @@ function applyLocalRiskDraft() {
 }
 function loadLocalBuilderDraft() {
   try {
-    const raw = localStorage.getItem(LOCAL_WISP_DRAFT_KEY);
+    const raw = localStorage.getItem(localCacheKey(LOCAL_WISP_DRAFT_KEY));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed?.drafts || typeof parsed.drafts !== "object") return null;
@@ -1491,7 +1496,7 @@ function loadLocalBuilderDraft() {
 function saveLocalBuilderDraft(drafts = state.builderDrafts, meta = {}) {
   try {
     localStorage.setItem(
-      LOCAL_WISP_DRAFT_KEY,
+      localCacheKey(LOCAL_WISP_DRAFT_KEY),
       JSON.stringify({
         drafts: normalizeBuilderDraftMap(structuredClone(drafts || {})),
         topicIndex:
@@ -1751,7 +1756,7 @@ function scheduleBuilderDraftSync(meta = {}) {
 function loadLocalSpecialDocuments() {
   try {
     return JSON.parse(
-      localStorage.getItem("easywisp-special-documents") || "{}",
+      localStorage.getItem(localCacheKey("easywisp-special-documents")) || "{}",
     );
   } catch {
     return {};
@@ -1760,7 +1765,7 @@ function loadLocalSpecialDocuments() {
 function persistLocalSpecialDocuments() {
   try {
     localStorage.setItem(
-      "easywisp-special-documents",
+      localCacheKey("easywisp-special-documents"),
       JSON.stringify({
         recordRetentionPolicy: state.recordRetentionPolicy,
         disasterRecoveryPlan: state.disasterRecoveryPlan,
@@ -1777,7 +1782,7 @@ function persistLocalSpecialDocuments() {
 function loadLocalDocumentWorkspaces() {
   try {
     return normalizeDocumentWorkspaceMap(
-      JSON.parse(localStorage.getItem("easywisp-document-workspaces") || "{}"),
+      JSON.parse(localStorage.getItem(localCacheKey("easywisp-document-workspaces")) || "{}"),
     );
   } catch {
     return {};
@@ -1786,7 +1791,7 @@ function loadLocalDocumentWorkspaces() {
 function persistLocalDocumentWorkspaces() {
   try {
     localStorage.setItem(
-      "easywisp-document-workspaces",
+      localCacheKey("easywisp-document-workspaces"),
       JSON.stringify(state.documentWorkspaces || {}),
     );
   } catch (error) {
@@ -1831,7 +1836,7 @@ function scheduleDocumentWorkspaceSync() {
 function loadLocalWorkspaceSettings() {
   try {
     return normalizeSettingsData(
-      JSON.parse(localStorage.getItem("easywisp-workspace-settings") || "null"),
+      JSON.parse(localStorage.getItem(localCacheKey("easywisp-workspace-settings")) || "null"),
     );
   } catch {
     return null;
@@ -1840,7 +1845,7 @@ function loadLocalWorkspaceSettings() {
 function persistLocalWorkspaceSettings(settings = state.settingsData) {
   try {
     localStorage.setItem(
-      "easywisp-workspace-settings",
+      localCacheKey("easywisp-workspace-settings"),
       JSON.stringify(normalizeSettingsData(settings)),
     );
   } catch (error) {
@@ -2127,6 +2132,7 @@ async function bootstrapApp() {
       fetchBootstrapState =
         supabaseModule.fetchBootstrapState || fetchBootstrapState;
       finalizeWispBuild = supabaseModule.finalizeWispBuild || finalizeWispBuild;
+      queueWispGeneration = supabaseModule.queueWispGeneration || queueWispGeneration;
       activateWispProject = supabaseModule.activateWispProject || activateWispProject;
       saveWispSignature = supabaseModule.saveWispSignature || saveWispSignature;
       createWispAcknowledgementRequests =
@@ -5813,7 +5819,7 @@ async function deleteCompletedWisp() {
     return;
   await deleteWispProject(project);
   try {
-    localStorage.removeItem(LOCAL_WISP_DRAFT_KEY);
+    localStorage.removeItem(localCacheKey(LOCAL_WISP_DRAFT_KEY));
   } catch {}
   cleanupBuilderMergeDownloadUrl();
   state.wispProject = null;
@@ -10682,7 +10688,7 @@ async function bootstrapPublicAcknowledgement(route) {
     completePublicWispAcknowledgementRequest =
       module.completePublicWispAcknowledgementRequest ||
       completePublicWispAcknowledgementRequest;
-    getWispPdfPreviewUrl = module.getWispPdfPreviewUrl || getWispPdfPreviewUrl;
+    getPublicWispPdfPreviewUrl = module.getPublicWispPdfPreviewUrl || getPublicWispPdfPreviewUrl;
     publicAcknowledgementState.request =
       await fetchPublicWispAcknowledgementRequest(route.requestId, route.token);
   } catch (error) {
@@ -10699,8 +10705,7 @@ async function bootstrapPublicAcknowledgement(route) {
         snapshot.finalPdfStoragePath ||
         snapshot.final_pdf_storage_path ||
         "";
-      publicAcknowledgementState.previewPdfUrl =
-        await getWispPdfPreviewUrl(storagePath);
+      publicAcknowledgementState.previewPdfUrl = await getPublicWispPdfPreviewUrl(route.requestId, route.token);
       if (!publicAcknowledgementState.previewPdfUrl)
         throw new Error("Finalized WISP PDF unavailable");
     } catch {

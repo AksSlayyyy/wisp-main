@@ -163,6 +163,80 @@ export async function getWispPdfPreviewUrl(storagePath) {
   return buildStoragePreviewUrl(storagePath, "wisp-pdfs");
 }
 
+export async function getPublicWispPdfPreviewUrl(requestId, token) {
+  if (!hasClient() || !requestId || !token) return null;
+  const { data, error } = await supabase.functions.invoke("public-wisp-download", { body: { requestId, token } });
+  return error || !data?.signedUrl ? null : data.signedUrl;
+}
+
+async function saveSpecialDocument(table, dataColumn, record, fallbackTitle) {
+  if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
+  const firm = await getActiveFirm();
+  if (!firm) throw new Error("Your firm workspace is unavailable.");
+  const payload = { firm_id: firm.id, [dataColumn]: record?.data || {}, updated_at: new Date().toISOString() };
+  if (["record_retention_policies", "disaster_recovery_plans", "data_breach_response_guidelines"].includes(table)) payload.title = String(record?.title || fallbackTitle).trim() || fallbackTitle;
+  const { data, error } = await supabase.from(table).upsert(payload, { onConflict: "firm_id" }).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export const saveRecordRetentionPolicy = (record) => saveSpecialDocument("record_retention_policies", "policy_data", record, "Record Retention Policy");
+export const saveDisasterRecoveryPlan = (record) => saveSpecialDocument("disaster_recovery_plans", "plan_data", record, "WISP Disaster Recovery Plan");
+export const saveIncidentReport = (record) => saveSpecialDocument("incident_reports", "report_data", record, "Incident Report");
+export const saveDataBreachResponseGuideline = (record) => saveSpecialDocument("data_breach_response_guidelines", "guideline_data", record, "Data Breach Response Guideline");
+export const saveDataBreachNotificationLetter = (record) => saveSpecialDocument("data_breach_notification_letters", "letter_data", record, "Data Breach Notification Letter");
+
+export async function saveSpecialDocumentInstances(instances = {}) {
+  if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
+  const firm = await getActiveFirm();
+  const current = await ensureAppSettingsRecord(firm.id);
+  const settings = { ...normalizeAppSettingsPayload(current.settings), special_document_instances: instances };
+  const { data, error } = await supabase.from("app_settings").upsert({ id: current.id, firm_id: firm.id, logo_path: current.logo_path || null, settings, updated_at: new Date().toISOString() }).select("*").single();
+  if (error) throw error;
+  return data.settings?.special_document_instances || instances;
+}
+
+export async function saveTerminatedEmployeeChecklist(record = {}) {
+  if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
+  const firm = await getActiveFirm();
+  const payload = {
+    firm_id: firm.id, employee_name: String(record.employeeName || record.employee_name || "").trim() || "Unnamed employee",
+    termination_date: record.terminationDate || record.termination_date || null,
+    coordinator_name: String(record.coordinatorName || record.coordinator_name || "").trim() || "Unassigned",
+    status: record.status || "draft", checklist_data: record.data || record.checklist_data || {},
+    completed_at: record.completedAt || record.completed_at || null, updated_at: new Date().toISOString(),
+  };
+  if (record.id) payload.id = record.id;
+  const { data, error } = await supabase.from("terminated_employee_checklists").upsert(payload, { onConflict: "id" }).select("*").single();
+  if (error) throw error;
+  return { ...data, employeeName: data.employee_name, terminationDate: data.termination_date, coordinatorName: data.coordinator_name, data: data.checklist_data, completedAt: data.completed_at };
+}
+
+async function exportSpecialDocument(table, save, record, options = {}, resultKey) {
+  const saved = await save(record);
+  const firm = await getActiveFirm();
+  if (!options.blob || !options.fileName) return { [resultKey]: saved };
+  const storagePath = `${firm.id}/exports/${Date.now()}-${sanitizeFileName(options.fileName)}`;
+  const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, options.blob, { contentType: "application/pdf", upsert: false });
+  if (uploadError) throw uploadError;
+  const { data: document, error: documentError } = await supabase.from("documents").insert({ firm_id: firm.id, bucket_name: "documents", storage_path: storagePath, file_name: options.fileName, mime_type: "application/pdf", size_bytes: options.blob.size || 0 }).select("*").single();
+  if (documentError) { await supabase.storage.from("documents").remove([storagePath]); throw documentError; }
+  const { data: updated, error: updateError } = await supabase.from(table).update({ exported_document_id: document.id, updated_at: new Date().toISOString() }).eq("id", saved.id).select("*").single();
+  if (updateError) throw updateError;
+  return { [resultKey]: updated, document: await hydrateDocumentRow(document) };
+}
+
+export const exportRecordRetentionPolicyPdf = (record, options) => exportSpecialDocument("record_retention_policies", saveRecordRetentionPolicy, record, options, "policy");
+export const exportDisasterRecoveryPlanPdf = (record, options) => exportSpecialDocument("disaster_recovery_plans", saveDisasterRecoveryPlan, record, options, "plan");
+export const exportIncidentReportPdf = (record, options) => exportSpecialDocument("incident_reports", saveIncidentReport, record, options, "report");
+export const exportDataBreachResponseGuidelinePdf = (record, options) => exportSpecialDocument("data_breach_response_guidelines", saveDataBreachResponseGuideline, record, options, "guideline");
+export const exportDataBreachNotificationLetterPdf = (record, options) => exportSpecialDocument("data_breach_notification_letters", saveDataBreachNotificationLetter, record, options, "letter");
+export const exportTerminatedEmployeeChecklistPdf = (record, options) => exportSpecialDocument("terminated_employee_checklists", saveTerminatedEmployeeChecklist, record, options, "checklist");
+
+export async function flushDocumentWorkspacesKeepalive(workspaces = {}) {
+  return saveDocumentWorkspaces(workspaces);
+}
+
 export async function saveFirmStaffMember(member = {}) {
   if (!hasClient()) return null;
   const firm = await getActiveFirm();
@@ -216,6 +290,11 @@ export async function fetchBootstrapState() {
       wispProjectResult,
       onboardingResult,
       staffResult,
+      retentionResult,
+      recoveryResult,
+      incidentResult,
+      guidelineResult,
+      letterResult,
     ] = await Promise.allSettled([
       ensureTrainingAssets(firm.id),
       supabase
@@ -243,6 +322,11 @@ export async function fetchBootstrapState() {
       ensureWispProject(firm.id),
       getFirmOnboarding(firm.id),
       supabase.from("firm_staff").select("*").eq("firm_id", firm.id).eq("status", "active").order("created_at", { ascending: true }),
+      supabase.from("record_retention_policies").select("*").eq("firm_id", firm.id).maybeSingle(),
+      supabase.from("disaster_recovery_plans").select("*").eq("firm_id", firm.id).maybeSingle(),
+      supabase.from("incident_reports").select("*").eq("firm_id", firm.id).maybeSingle(),
+      supabase.from("data_breach_response_guidelines").select("*").eq("firm_id", firm.id).maybeSingle(),
+      supabase.from("data_breach_notification_letters").select("*").eq("firm_id", firm.id).maybeSingle(),
     ]);
 
     if (trainingAssetsResult.status === "rejected")
@@ -304,6 +388,11 @@ export async function fetchBootstrapState() {
     const [
       generatedFiles,
       wispAttachments,
+      recordRetentionPolicy: retentionResult.status === "fulfilled" ? retentionResult.value?.data || null : null,
+      disasterRecoveryPlan: recoveryResult.status === "fulfilled" ? recoveryResult.value?.data || null : null,
+      incidentReport: incidentResult.status === "fulfilled" ? incidentResult.value?.data || null : null,
+      dataBreachResponseGuideline: guidelineResult.status === "fulfilled" ? guidelineResult.value?.data || null : null,
+      dataBreachNotificationLetter: letterResult.status === "fulfilled" ? letterResult.value?.data || null : null,
       wispSignatures,
       acknowledgementRequests,
     ] = await Promise.all([
@@ -466,7 +555,7 @@ export async function uploadDocuments(fileList) {
   const results = [];
 
   for (const file of fileList) {
-    const storagePath = `${firm.slug}/${Date.now()}-${sanitizeFileName(file.name)}`;
+    const storagePath = `${firm.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
     const { error: storageError } = await supabase.storage
       .from("documents")
       .upload(storagePath, file, {
@@ -519,7 +608,7 @@ export async function uploadCompanyLogo(file) {
   const firm = await getActiveFirm();
   if (!firm) return null;
   const settingsRecord = await ensureAppSettingsRecord(firm.id);
-  const storagePath = `${firm.slug}/logos/${Date.now()}-${sanitizeFileName(file.name)}`;
+  const storagePath = `${firm.id}/logos/${Date.now()}-${sanitizeFileName(file.name)}`;
   const { error: storageError } = await supabase.storage
     .from("documents")
     .upload(storagePath, file, {
@@ -923,7 +1012,7 @@ export async function finalizeWispBuild(filePayload, meta = {}) {
   }
 
   const storagePath = [
-    firm.slug,
+    firm.id,
     "wisp",
     savedProject.id,
     Date.now() + "-" + sanitizeFileName(filePayload.fileName),
@@ -958,6 +1047,22 @@ export async function finalizeWispBuild(filePayload, meta = {}) {
     generatedFile: latestGeneratedFile,
     versions: generatedFiles.slice(1),
   };
+}
+
+export async function queueWispGeneration(projectId, renderPayload) {
+  if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
+  if (!projectId) throw new Error("Save the WISP before generating it.");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (!accessToken) throw new Error("Sign in again before generating the WISP.");
+  const response = await fetch(`${env.SUPABASE_URL}/functions/v1/wisp-generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ projectId, idempotencyKey: crypto.randomUUID(), renderPayload }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error || "Could not queue WISP generation.");
+  return payload;
 }
 
 export async function deleteWispProject(projectRecord) {
@@ -1008,7 +1113,7 @@ export async function uploadWispAttachments(fileList) {
 
   for (const file of fileList) {
     const storagePath = [
-      firm.slug,
+      firm.id,
       "wisp",
       project.id,
       "attachments",

@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "capturedAt": "2026-09-12",
+  "projectRef": "eugsdqwimpocfibmjfxa",
+  "source": "authenticated Supabase staging MCP metadata query",
+  "scope": "Metadata only: migrations, public/storage tables, RLS policies, public/private functions, storage buckets, and public/storage triggers. No application rows were read.",
+  "algorithm": "md5 of ordered metadata fields; use as a change detector, not a security primitive.",
+  "areas": {
+    "buckets": { "itemCount": 3, "fingerprint": "3cad47057677771fe6191b91e10dfd9a" },
+    "functions": { "itemCount": 15, "fingerprint": "c8ca83bc00c98e9081077050f1606e81" },
+    "migrations": { "itemCount": 31, "fingerprint": "5f841b7300817c4f8c20f12f6038a641" },
+    "policies": { "itemCount": 59, "fingerprint": "4a841f62769c37f1811d6f34e0c29fd4" },
+    "tables": { "itemCount": 31, "fingerprint": "7ff7d5662c5151eca2114350651d33d6" },
+    "triggers": { "itemCount": 6, "fingerprint": "7cc7495afe47f85a4dc9d966c3271822" }
+  }
+}

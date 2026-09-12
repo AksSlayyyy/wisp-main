@@ -1,0 +1,6 @@
+{
+  "format": 1,
+  "capturedAt": "2026-09-12",
+  "purpose": "Stage 3 resolved every previously missing Supabase client export. New missing bindings must fail the audit.",
+  "knownMissingBindings": []
+}

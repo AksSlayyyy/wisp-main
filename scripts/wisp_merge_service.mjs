@@ -1,4 +1,5 @@
 import http from "node:http";
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -31,9 +32,14 @@ const CHROME_CANDIDATES = [
   "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
 ];
-const REQUIRE_AUTH = process.env.WISP_REQUIRE_AUTH === "true";
+// Production must fail closed. Set WISP_REQUIRE_AUTH=false only for an explicit local demo.
+const REQUIRE_AUTH = process.env.WISP_REQUIRE_AUTH !== "false";
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || "");
+const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
+const WORKER_TOKEN = String(process.env.WISP_RENDERER_WORKER_TOKEN || "");
+const WORKER_ENABLED = process.env.WISP_RENDERER_WORKER_ENABLED === "true";
+const WORKER_POLL_MS = Math.max(5000, Number(process.env.WISP_RENDERER_WORKER_POLL_MS || 15000));
 
 function signatureFontDataUrl(fileName) {
   try {
@@ -60,9 +66,98 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function serviceRoleHeaders(extra = {}) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY)
+    throw new Error("Renderer queue worker is not configured.");
+  return {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    ...extra,
+  };
+}
+
+async function callServiceRpc(name, body) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: serviceRoleHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok)
+    throw new Error(typeof payload?.message === "string" ? payload.message : `Supabase ${name} failed (${response.status}).`);
+  return payload;
+}
+
+async function uploadGeneratedPdf(storagePath, pdfBuffer) {
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/wisp-pdfs/${storagePath.split("/").map(encodeURIComponent).join("/")}`, {
+    method: "POST",
+    headers: serviceRoleHeaders({ "Content-Type": "application/pdf", "x-upsert": "false" }),
+    body: pdfBuffer,
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.message || `Generated PDF upload failed (${response.status}).`);
+  }
+}
+
+function safeWorkerFileName(payload, versionId) {
+  const firmName = String(payload?.mergeFields?.companyName || payload?.firm?.companyName || "wisp");
+  return `${sanitizeSlug(firmName)}-wisp-${String(versionId).slice(0, 8)}.pdf`;
+}
+
+async function processOneGenerationJob() {
+  const job = await callServiceRpc("claim_wisp_generation_job", {});
+  if (!job?.job_id) return false;
+  try {
+    const payload = job.render_payload;
+    if (!payload || typeof payload !== "object") throw new Error("Queued WISP has no render payload.");
+    const officialPreview = await runOfficialPreview(payload);
+    try {
+      const pdfBuffer = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), []);
+      if (!pdfBuffer) throw new Error("Chromium PDF renderer is unavailable.");
+      const fileName = safeWorkerFileName(payload, job.version_id);
+      const storagePath = `${job.firm_id}/wisp/${job.version_id}/${fileName}`;
+      const contentHash = createHash("sha256").update(pdfBuffer).digest("hex");
+      await uploadGeneratedPdf(storagePath, pdfBuffer);
+      await callServiceRpc("complete_wisp_generation_job", {
+        p_job_id: job.job_id,
+        p_lease_token: job.lease_token,
+        p_storage_path: storagePath,
+        p_file_name: fileName,
+        p_content_hash: contentHash,
+        p_size_bytes: pdfBuffer.length,
+      });
+    } finally {
+      try { rmSync(officialPreview.tempDir, { recursive: true, force: true }); } catch {}
+    }
+  } catch (error) {
+    console.error("WISP generation job failed", job.job_id, error);
+    try {
+      await callServiceRpc("fail_wisp_generation_job", {
+        p_job_id: job.job_id,
+        p_lease_token: job.lease_token,
+        p_error_code: String(error instanceof Error ? error.message : error).slice(0, 200),
+      });
+    } catch (failureError) {
+      console.error("Could not record WISP generation failure", failureError);
+    }
+  }
+  return true;
+}
+
+async function drainGenerationQueue() {
+  if (!WORKER_ENABLED || !SUPABASE_SERVICE_ROLE_KEY) return { processed: 0, enabled: false };
+  let processed = 0;
+  // One service process handles one job at a time; database leasing keeps it safe across replicas.
+  while (processed < 2 && await processOneGenerationJob()) processed += 1;
+  return { processed, enabled: true };
+}
+
 async function authenticateRequest(req) {
   if (!REQUIRE_AUTH) return true;
   const authorization = String(req.headers.authorization || "");
+  const workerToken = String(req.headers["x-wisp-worker-token"] || "");
+  if (WORKER_TOKEN && workerToken === WORKER_TOKEN) return true;
   if (!authorization.startsWith("Bearer ")) return false;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
     throw new Error("Renderer authentication is not configured.");
@@ -717,7 +812,18 @@ const server = http.createServer(async (req, res) => {
       officialPreviewScript: OFFICIAL_PREVIEW_SCRIPT,
       officialPdfPath: OFFICIAL_PDF_PATH,
       chromePath: findChromeExecutable(),
+      queueWorker: WORKER_ENABLED && Boolean(SUPABASE_SERVICE_ROLE_KEY),
     });
+  }
+
+  if (req.method === "POST" && req.url === "/internal/process-wisp-jobs") {
+    if (!WORKER_TOKEN || String(req.headers["x-wisp-worker-token"] || "") !== WORKER_TOKEN)
+      return sendJson(res, 401, { error: "Unauthorized" });
+    try {
+      return sendJson(res, 200, await drainGenerationQueue());
+    } catch (error) {
+      return sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   if (req.method === "POST" && req.url === "/merge") {
@@ -813,4 +919,11 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`wisp merge service listening on http://${HOST}:${PORT}`);
+  if (WORKER_ENABLED) {
+    if (!SUPABASE_SERVICE_ROLE_KEY) console.error("WISP queue worker is enabled but SUPABASE_SERVICE_ROLE_KEY is missing.");
+    else {
+      setInterval(() => drainGenerationQueue().catch((error) => console.error("WISP queue poll failed", error)), WORKER_POLL_MS).unref();
+      drainGenerationQueue().catch((error) => console.error("Initial WISP queue poll failed", error));
+    }
+  }
 });
