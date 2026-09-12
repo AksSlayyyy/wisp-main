@@ -11,7 +11,6 @@ const files = [
   "app.js",
   "styles.css",
   "config.js",
-  "supabase-client.js",
 ];
 const directories = ["assets/fonts", "design/training"];
 const optionalFiles = [
@@ -40,16 +39,16 @@ for (const file of optionalFiles) {
   }
 }
 
-// Ship the exact SDK version installed by npm with the Worker assets. The app
-// used to depend on a UMD global from a third-party CDN, which could fail
-// before auth initialized and silently put users in an offline fallback UI.
+// Compile the complete browser client and its pinned SDK into a compatibility
+// bundle. Serving this source file raw previously caused some browser paths to
+// reject syntax before authentication could initialise.
 await build({
-  entryPoints: ["@supabase/supabase-js"],
+  entryPoints: [resolve(root, "supabase-client.js")],
   bundle: true,
   format: "esm",
   platform: "browser",
-  target: ["es2020"],
-  outfile: resolve(outputDirectory, "supabase-browser.js"),
+  target: ["es2017"],
+  outfile: resolve(outputDirectory, "supabase-client.js"),
   logLevel: "warning",
 });
 

@@ -1,6 +1,6 @@
-// This local, build-generated module keeps browser auth independent from an
-// external CDN. See scripts/build-cloudflare-static.mjs.
-import { createClient } from "./supabase-browser.js";
+// This package import is bundled into the static browser client during the
+// Cloudflare build, so runtime auth has no third-party CDN dependency.
+import { createClient } from "@supabase/supabase-js";
 
 const env = window.__ENV__ || {};
 const productionAuthEnabled = env.ENABLE_PRODUCTION_AUTH === true || env.ENABLE_PRODUCTION_AUTH === "true";
@@ -387,14 +387,19 @@ export async function fetchBootstrapState() {
       wispProject || null,
       await fetchWispAnswerRows(wispProject?.id),
     );
+    const recordRetentionPolicy =
+      retentionResult.status === "fulfilled" ? retentionResult.value?.data || null : null;
+    const disasterRecoveryPlan =
+      recoveryResult.status === "fulfilled" ? recoveryResult.value?.data || null : null;
+    const incidentReport =
+      incidentResult.status === "fulfilled" ? incidentResult.value?.data || null : null;
+    const dataBreachResponseGuideline =
+      guidelineResult.status === "fulfilled" ? guidelineResult.value?.data || null : null;
+    const dataBreachNotificationLetter =
+      letterResult.status === "fulfilled" ? letterResult.value?.data || null : null;
     const [
       generatedFiles,
       wispAttachments,
-      recordRetentionPolicy: retentionResult.status === "fulfilled" ? retentionResult.value?.data || null : null,
-      disasterRecoveryPlan: recoveryResult.status === "fulfilled" ? recoveryResult.value?.data || null : null,
-      incidentReport: incidentResult.status === "fulfilled" ? incidentResult.value?.data || null : null,
-      dataBreachResponseGuideline: guidelineResult.status === "fulfilled" ? guidelineResult.value?.data || null : null,
-      dataBreachNotificationLetter: letterResult.status === "fulfilled" ? letterResult.value?.data || null : null,
       wispSignatures,
       acknowledgementRequests,
     ] = await Promise.all([
