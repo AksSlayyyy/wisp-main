@@ -2128,7 +2128,7 @@ async function bootstrapApp() {
       // Keep the dynamically imported backend client in lockstep with this
       // deployed app bundle. Cloudflare/browser caches previously served an
       // obsolete module after the shell itself had updated.
-      const supabaseModule = await import("./supabase-client.js?v=20260912-staging-test-access");
+      const supabaseModule = await import("./supabase-client.js?v=20260912-staging-auth-repair-4");
       console.log("[bootstrapApp] supabase import succeeded");
       supabaseBackendLoaded = true;
       deleteDocument = supabaseModule.deleteDocument || deleteDocument;

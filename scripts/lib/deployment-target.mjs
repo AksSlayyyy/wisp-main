@@ -34,8 +34,15 @@ export function assertStagingTarget(environment) {
       `WISP_RENDERER_URL must be ${STAGING_TARGET.rendererOrigin}; received ${environment.rendererUrl || "<missing>"}.`,
     );
   }
-  if (!environment.publishableKey.startsWith("sb_publishable_")) {
-    errors.push("SUPABASE_ANON_KEY must contain a publishable key.");
+  // Supabase supports both newer `sb_publishable_` keys and legacy JWT anon
+  // keys in browser clients. Both are public client credentials; neither is a
+  // service-role secret. Accept either while staging finishes its SDK/key
+  // migration.
+  if (
+    !environment.publishableKey.startsWith("sb_publishable_") &&
+    !environment.publishableKey.startsWith("eyJ")
+  ) {
+    errors.push("SUPABASE_ANON_KEY must contain a public publishable or legacy anon key.");
   }
   return errors;
 }
