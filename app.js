@@ -7079,32 +7079,12 @@ function beginAuthHandoff(user) {
   state.authUser = user;
   state.authReady = true;
   state.authBusy = false;
-  if (state.screen !== "auth") {
-    void resolveAuthenticatedDestination();
-    return;
-  }
-  if (state.authTransitioning) return;
-
-  state.authTransitioning = true;
-  const authSplit = app.querySelector(".auth-split");
-  const submit = app.querySelector("[data-auth-submit]");
-  if (authSplit) {
-    authSplit.classList.add("is-completing");
-    authSplit.setAttribute("aria-busy", "true");
-  } else {
-    render();
-  }
-  if (submit) {
-    submit.classList.add("is-complete");
-    submit.disabled = true;
-    submit.textContent = "Signed in";
-  }
-
   clearTimeout(authHandoffTimer);
-  authHandoffTimer = setTimeout(() => {
-    state.authTransitioning = false;
-    void resolveAuthenticatedDestination();
-  }, 420);
+  // Authentication must not depend on a cosmetic timer. A delayed browser
+  // timer can otherwise strand a valid session on the sign-in screen.
+  state.authTransitioning = false;
+  void resolveAuthenticatedDestination();
+  render();
 }function previewOnboardingLogo(file, input) {
   const allowedTypes = new Set(["image/png", "image/jpeg", "image/svg+xml"]);
   if (!allowedTypes.has(file.type)) {
