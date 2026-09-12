@@ -1,4 +1,6 @@
-const createClient = window.supabase?.createClient;
+// This local, build-generated module keeps browser auth independent from an
+// external CDN. See scripts/build-cloudflare-static.mjs.
+import { createClient } from "./supabase-browser.js";
 
 const env = window.__ENV__ || {};
 const productionAuthEnabled = env.ENABLE_PRODUCTION_AUTH === true || env.ENABLE_PRODUCTION_AUTH === "true";

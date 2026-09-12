@@ -28,5 +28,8 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.1.200",
     "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
   }
 }

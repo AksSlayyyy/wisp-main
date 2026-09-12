@@ -1,5 +1,6 @@
 import { cp, mkdir, rm, stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import { build } from "esbuild";
 
 const root = process.cwd();
 // A dedicated directory avoids Cloudflare's restored build-output cache from
@@ -38,5 +39,18 @@ for (const file of optionalFiles) {
     // Optional visual artwork: the UI has a CSS fallback.
   }
 }
+
+// Ship the exact SDK version installed by npm with the Worker assets. The app
+// used to depend on a UMD global from a third-party CDN, which could fail
+// before auth initialized and silently put users in an offline fallback UI.
+await build({
+  entryPoints: ["@supabase/supabase-js"],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: ["es2020"],
+  outfile: resolve(outputDirectory, "supabase-browser.js"),
+  logLevel: "warning",
+});
 
 console.log(`Cloudflare static assets built in: ${outputDirectory}`);
