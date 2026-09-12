@@ -7,6 +7,7 @@ let saveRiskAssessmentDraft = async () => null;
 let saveWispDraft = async () => null;
 let finalizeWispBuild = async () => null;
 let queueWispGeneration = async () => null;
+let getWispGenerationStatus = async () => null;
 let activateWispProject = async () => null;
 let saveWispSignature = async () => {
   throw new Error("WISP signature saving is not available yet.");
@@ -2128,7 +2129,7 @@ async function bootstrapApp() {
       // Keep the dynamically imported backend client in lockstep with this
       // deployed app bundle. Cloudflare/browser caches previously served an
       // obsolete module after the shell itself had updated.
-      const supabaseModule = await import("./supabase-client.js?v=20260912-staging-auth-repair-6");
+      const supabaseModule = await import("./supabase-client.js?v=20260912-stage-04-immutable-cutover");
       console.log("[bootstrapApp] supabase import succeeded");
       supabaseBackendLoaded = true;
       deleteDocument = supabaseModule.deleteDocument || deleteDocument;
@@ -2136,6 +2137,8 @@ async function bootstrapApp() {
         supabaseModule.fetchBootstrapState || fetchBootstrapState;
       finalizeWispBuild = supabaseModule.finalizeWispBuild || finalizeWispBuild;
       queueWispGeneration = supabaseModule.queueWispGeneration || queueWispGeneration;
+      getWispGenerationStatus =
+        supabaseModule.getWispGenerationStatus || getWispGenerationStatus;
       activateWispProject = supabaseModule.activateWispProject || activateWispProject;
       saveWispSignature = supabaseModule.saveWispSignature || saveWispSignature;
       createWispAcknowledgementRequests =
@@ -5055,6 +5058,7 @@ function getBuilderTemplateMergePayload() {
     attachments: state.builderAttachments.map((file, index) => ({
       order: index + 1,
       name: file.name,
+      storagePath: file.storagePath || file.storage_path || "",
       sizeLabel: file.sizeLabel,
       type: file.type,
       size: file.size || 0,
@@ -5650,45 +5654,64 @@ function downloadStoredWispFile(record) {
   link.remove();
 }
 async function finalizeBuilderWisp() {
-  if (!state.builderMergePdfBlob) {
-    await requestBuilderMergedDocx();
-  }
-  const blob = state.builderMergePdfBlob;
-  const fileName = state.builderMergePdfFileName || "wisp-preview.pdf";
-  const contentType = "application/pdf";
-  if (!blob) {
-    throw new Error("Generate the WISP PDF review copy before finalizing.");
-  }
   if (!supabaseBackendLoaded) {
     throw new Error(
       "Supabase backend did not load. Open the app through http://127.0.0.1:4173/, not as a file:/// URL.",
     );
   }
-  const result = await finalizeWispBuild(
-    { blob, fileName, contentType },
-    {
-      ...getBuilderDraftMeta({
-        status: "completed",
-        title: state.wispProject?.title || "Written Information Security Plan",
-      }),
-      builderDrafts: state.builderDrafts,
-    },
+  const savedProject = await saveWispDraft(state.builderDrafts, {
+    ...getBuilderDraftMeta({
+      status: "completed",
+      title: state.wispProject?.title || "Written Information Security Plan",
+    }),
+  });
+  if (!savedProject?.id)
+    throw new Error("Supabase did not save the WISP before generation.");
+
+  // Final PDFs are never uploaded by the browser. The immutable payload is
+  // persisted with a lease-bound job and rendered by the server-side worker.
+  const queued = await queueWispGeneration(
+    savedProject.id,
+    getBuilderTemplateMergePayload(),
   );
-  if (!result?.project)
-    throw new Error("Supabase did not confirm the finalized WISP.");
-  state.wispProject = result.project;
-  state.wispVersions = result.versions || [];
-  if (result.project.dashboard_facts)
-    state.dashboardData = result.project.dashboard_facts;
+  if (!queued?.job_id)
+    throw new Error("Supabase did not create the WISP generation job.");
+  showToast("WISP generation queued. Creating the immutable PDF…", "info");
+
+  const deadline = Date.now() + 150000;
+  let completed = null;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    const status = await getWispGenerationStatus(queued.job_id, savedProject.id);
+    if (status?.job?.status === "succeeded" && status.generatedFile) {
+      completed = status;
+      break;
+    }
+    if (status?.job?.status === "failed")
+      throw new Error(status.job.error_code || "The server could not render this WISP.");
+  }
+  if (!completed?.generatedFile)
+    throw new Error("The WISP is still generating. Reopen this workspace in a moment to see the completed PDF.");
+
+  const generatedFile = completed.generatedFile;
+  state.wispProject = {
+    ...savedProject,
+    status: "completed",
+    latest_generated_file: generatedFile,
+    signatures: [],
+  };
+  state.wispVersions = [];
+  if (savedProject.dashboard_facts)
+    state.dashboardData = savedProject.dashboard_facts;
   const completedEntry = {
-    id: `completed-${Date.now()}`,
+    id: generatedFile.id,
     title: state.wispProject?.title || "Written Information Security Plan",
     firmName: state.firmProfile?.name || state.form.companyName || "Your firm",
-    fileName,
-    downloadUrl: URL.createObjectURL(blob),
+    fileName: generatedFile.fileName,
+    downloadUrl: generatedFile.downloadUrl,
     updatedAt: new Date().toISOString(),
     isLatest: true,
-    local: true,
+    local: false,
   };
   if (state.wispVersions && state.wispVersions.length) {
     state.wispVersions.forEach((version) => {
@@ -5724,7 +5747,7 @@ async function finalizeBuilderWisp() {
     builderReviewPage: 0,
     builderSidebarOpen: false,
   });
-  showToast("WISP finalized", "success");
+  showToast("Immutable WISP PDF finalized", "success");
 }
 function completedWispSignatureRevisionKey() {
   const signatures = Array.isArray(state.wispProject?.signatures)
@@ -5746,39 +5769,10 @@ function completedWispSignatureRevisionKey() {
   );
 }
 async function openCompletedWispPreview() {
-  if (state.builderSigningPdfBusy) {
-    showToast("The signed PDF is still being updated. Please wait a moment.", "info");
-    return;
-  }
   const file = state.wispProject?.latest_generated_file;
   if (!file?.downloadUrl) {
     showToast("The finalized PDF is not available yet.", "error");
     return;
-  }
-  const signatures = Array.isArray(state.wispProject?.signatures)
-    ? state.wispProject.signatures
-    : [];
-  const revisionKey = completedWispSignatureRevisionKey();
-  if (signatures.length && localStorage.getItem(revisionKey) !== "ready") {
-    state.builderSigningPdfBusy = true;
-    render();
-    try {
-      const signedResult = await rebuildCompletedWispSignaturePdf(signatures);
-      if (signedResult?.project)
-        state.wispProject = { ...signedResult.project, signatures };
-      state.wispVersions = signedResult?.versions || state.wispVersions;
-      localStorage.setItem(revisionKey, "ready");
-    } catch (error) {
-      console.warn("Signed PDF layout refresh failed", error);
-      showToast(
-        error?.message || "The signed PDF could not be refreshed right now.",
-        "error",
-      );
-      return;
-    } finally {
-      state.builderSigningPdfBusy = false;
-      render();
-    }
   }
   cleanupBuilderMergeDownloadUrl();
   state.builderMergePdfUrl =
@@ -6494,27 +6488,8 @@ async function saveCompletedWispSignature() {
   const signatures = result.signatures || [];
   state.wispProject = { ...state.wispProject, signatures };
   state.wispSignatureDialog = null;
-  state.builderSigningPdfBusy = true;
   render();
-  showToast("Signature saved. Updating the final WISP PDF...", "success");
-  rebuildCompletedWispSignaturePdf(signatures)
-    .then((signedResult) => {
-      if (signedResult?.project)
-        state.wispProject = { ...signedResult.project, signatures };
-      state.wispVersions = signedResult?.versions || state.wispVersions;
-      state.builderSigningPdfBusy = false;
-      render();
-      showToast("Signed WISP PDF updated.", "success");
-    })
-    .catch((error) => {
-      console.warn("Signed PDF refresh failed", error);
-      state.builderSigningPdfBusy = false;
-      render();
-      showToast(
-        "Signature saved, but the final PDF update needs to be retried.",
-        "info",
-      );
-    });
+  showToast("Signature recorded against this immutable WISP version.", "success");
 }
 function acknowledgingSignerRequestScreen() {
   const sourceTab =

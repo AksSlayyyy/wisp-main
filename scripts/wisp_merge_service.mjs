@@ -5,6 +5,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { PDFDocument } from "pdf-lib";
 
 const HOST = process.env.WISP_MERGE_HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || process.env.WISP_MERGE_PORT || 8766);
@@ -100,6 +101,29 @@ async function uploadGeneratedPdf(storagePath, pdfBuffer) {
   }
 }
 
+async function downloadPrivateWispPdf(storagePath) {
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/wisp-pdfs/${storagePath.split("/").map(encodeURIComponent).join("/")}`, {
+    headers: serviceRoleHeaders(),
+  });
+  if (!response.ok) throw new Error(`Could not retrieve queued attachment (${response.status}).`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function appendQueuedAttachments(pdfBuffer, attachments = []) {
+  const attachmentRows = Array.isArray(attachments) ? attachments : [];
+  const paths = attachmentRows
+    .map((attachment) => String(attachment?.storagePath || attachment?.storage_path || ""))
+    .filter(Boolean);
+  if (!paths.length) return pdfBuffer;
+  const combined = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+  for (const storagePath of paths) {
+    const attachment = await PDFDocument.load(await downloadPrivateWispPdf(storagePath), { ignoreEncryption: true });
+    const pages = await combined.copyPages(attachment, attachment.getPageIndices());
+    pages.forEach((page) => combined.addPage(page));
+  }
+  return Buffer.from(await combined.save());
+}
+
 function safeWorkerFileName(payload, versionId) {
   const firmName = String(payload?.mergeFields?.companyName || payload?.firm?.companyName || "wisp");
   return `${sanitizeSlug(firmName)}-wisp-${String(versionId).slice(0, 8)}.pdf`;
@@ -113,7 +137,8 @@ async function processOneGenerationJob() {
     if (!payload || typeof payload !== "object") throw new Error("Queued WISP has no render payload.");
     const officialPreview = await runOfficialPreview(payload);
     try {
-      const pdfBuffer = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), []);
+      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), []);
+      const pdfBuffer = await appendQueuedAttachments(renderedPdf, payload?.attachments);
       if (!pdfBuffer) throw new Error("Chromium PDF renderer is unavailable.");
       const fileName = safeWorkerFileName(payload, job.version_id);
       const storagePath = `${job.firm_id}/wisp/${job.version_id}/${fileName}`;

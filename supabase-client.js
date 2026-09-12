@@ -843,15 +843,19 @@ export async function activateWispProject(projectId) {
   if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
   if (!projectId)
     throw new Error("A completed WISP is required before activation.");
-  const { data, error } = await supabase.rpc("activate_wisp_project", {
-    p_project_id: projectId,
+  const generatedFiles = await fetchWispGeneratedFiles(projectId);
+  const versionId = generatedFiles.find((file) => file.versionId)?.versionId;
+  if (!versionId)
+    throw new Error("Generate the immutable WISP version before activation.");
+  const { data, error } = await supabase.rpc("activate_wisp_version", {
+    p_version_id: versionId,
   });
   if (error) throw error;
   const project = hydrateWispProjectDrafts(
     data,
     await fetchWispAnswerRows(data?.id),
   );
-  const [generatedFiles, signatures, acknowledgementRequests] =
+  const [refreshedGeneratedFiles, signatures, acknowledgementRequests] =
     await Promise.all([
       fetchWispGeneratedFiles(project?.id),
       fetchWispSignatures(project?.id),
@@ -859,7 +863,7 @@ export async function activateWispProject(projectId) {
     ]);
   const activatedProject = {
     ...project,
-    latest_generated_file: generatedFiles[0] || null,
+    latest_generated_file: refreshedGeneratedFiles[0] || null,
     signatures,
     acknowledgement_requests: acknowledgementRequests,
   };
@@ -961,26 +965,23 @@ export async function saveWispSignature(signature = {}) {
     : wispProjectCache;
   if (!project?.id)
     throw new Error("A finalized WISP is required before signing.");
-  const payload = {
-    project_id: project.id,
-    signer_name: String(signature.signerName || "").trim(),
-    signer_role: String(signature.signerRole || "").trim(),
-    signer_email: String(signature.signerEmail || "").trim() || null,
-    signature_method: signature.signatureMethod === "type" ? "type" : "draw",
-    signature_data: String(signature.signatureData || ""),
-    signature_font: signature.signatureFont || null,
-    signed_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  if (!payload.signer_name || !payload.signer_role || !payload.signature_data)
+  const signerRole = String(signature.signerRole || "").trim();
+  const signatureData = String(signature.signatureData || "");
+  if (!signerRole || !signatureData)
     throw new Error("Complete the signature before saving.");
-  const { data, error } = await supabase
-    .from("wisp_signatures")
-    .upsert(payload, { onConflict: "project_id,signer_role" })
-    .select(
-      "id,project_id,signer_name,signer_role,signer_email,signature_method,signature_data,signature_font,signed_at",
-    )
-    .single();
+  const generatedFiles = await fetchWispGeneratedFiles(project.id);
+  const versionId = generatedFiles.find((file) => file.versionId)?.versionId;
+  if (!versionId)
+    throw new Error("Generate the immutable WISP version before signing it.");
+  const { data, error } = await supabase.rpc("sign_wisp_version", {
+    p_version_id: versionId,
+    p_signer_role: signerRole,
+    p_signature_method: signature.signatureMethod === "type" ? "type" : "draw",
+    p_signature_data: signatureData,
+    p_signature_font: signature.signatureFont || null,
+    p_consent_text:
+      "I confirm that I reviewed and approve this immutable WISP version.",
+  });
   if (error) throw error;
   const signatures = await fetchWispSignatures(project.id);
   if (wispProjectCache?.id === project.id)
@@ -1070,6 +1071,24 @@ export async function queueWispGeneration(projectId, renderPayload) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error || "Could not queue WISP generation.");
   return payload;
+}
+
+export async function getWispGenerationStatus(jobId, projectId) {
+  if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
+  if (!jobId) throw new Error("A WISP generation job is required.");
+  const { data: job, error } = await supabase
+    .from("wisp_generation_jobs")
+    .select("id,version_id,status,attempts,error_code,created_at,updated_at,completed_at")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (error) throw error;
+  const generatedFiles = job?.status === "succeeded" && projectId
+    ? await fetchWispGeneratedFiles(projectId)
+    : [];
+  return {
+    job: job || null,
+    generatedFile: generatedFiles.find((file) => file.versionId === job?.version_id) || null,
+  };
 }
 
 export async function deleteWispProject(projectRecord) {
@@ -1229,15 +1248,27 @@ async function hydrateWispAttachmentRow(row) {
 
 async function fetchWispSignatures(projectId) {
   if (!projectId) return [];
-  const { data, error } = await supabase
-    .from("wisp_signatures")
-    .select(
-      "id,project_id,signer_name,signer_role,signer_email,signature_method,signature_data,signature_font,signed_at",
-    )
+  const { data: version, error: versionError } = await supabase
+    .from("wisp_versions")
+    .select("id")
     .eq("project_id", projectId)
-    .order("signed_at", { ascending: true });
+    .in("state", ["ready", "signing", "active"])
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (versionError) throw versionError;
+  if (!version?.id) return [];
+  const { data, error } = await supabase
+    .from("wisp_version_signatures")
+    .select("id,version_id,signer_name,signer_role,signature_method,signature_data,signature_font,consented_at")
+    .eq("version_id", version.id)
+    .order("consented_at", { ascending: true });
   if (error) throw error;
-  return data || [];
+  return (data || []).map((signature) => ({
+    ...signature,
+    project_id: projectId,
+    signed_at: signature.consented_at,
+  }));
 }
 
 export async function fetchWispAcknowledgementRequests(projectId) {
@@ -1253,7 +1284,7 @@ async function fetchWispGeneratedFiles(projectId) {
   if (!projectId) return [];
   const { data, error } = await supabase
     .from("wisp_generated_files")
-    .select("id,project_id,storage_path,file_name,created_at")
+    .select("id,project_id,version_id,storage_path,file_name,content_hash,size_bytes,created_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -1262,8 +1293,11 @@ async function fetchWispGeneratedFiles(projectId) {
     (data || []).map(async (row) => ({
       id: row.id,
       projectId: row.project_id,
+      versionId: row.version_id || null,
       storagePath: row.storage_path,
       fileName: row.file_name,
+      contentHash: row.content_hash || null,
+      sizeBytes: Number(row.size_bytes || 0),
       updated_at: row.created_at,
       downloadUrl: await buildStoragePreviewUrl(row.storage_path, "wisp-pdfs"),
     })),
