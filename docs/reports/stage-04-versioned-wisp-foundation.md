@@ -1,33 +1,32 @@
-# Stage 4 — Versioned WISP Foundation
+# Stage 4 — Immutable WISP Generation and Signing
 
-**Status:** database and queue-worker implementation deployed to staging on 2026-09-12. The browser cutover is intentionally held until the staging Render service receives the new source and server-only worker credentials.
+**Status:** Complete on staging — 2026-09-12.
 
-## Implemented
+## What changed
 
-- Added immutable `wisp_versions` records with firm/project ownership, sequential version number, source revision, canonical snapshot, SHA-256 content hash, lifecycle state, and server timestamps.
-- Added durable `wisp_generation_jobs` with firm-scoped idempotency keys, request hashes, attempts, lease tokens, expiry, status, and failure fields.
-- Added append-only `wisp_version_signatures`, bound to one immutable version, an authenticated user, a reserved signatory role, consent text, and server timestamp.
-- Extended generated-file metadata with version ID, content hash, and size.
-- Added security-definer RPCs:
-  - `create_wisp_generation_job` creates an immutable snapshot and a durable idempotent job after manager authorization.
-  - `claim_wisp_generation_job` grants a time-bounded worker lease.
-  - `complete_wisp_generation_job` accepts only a valid lease plus a non-empty SHA-256-identified artifact before marking a version ready.
-  - `sign_wisp_version` records an append-only, version-bound consent/signature.
-- Added authenticated `wisp-generate` Edge Function on staging. It accepts a JWT, project ID, and idempotency key, then invokes the authorized job-creation RPC and returns `202`.
-- The immutable job snapshot now includes a bounded render payload (max 4 MB). Signatures are stripped before it is stored, so a future signature cannot silently alter the approved version’s generation input.
-- Added lease expiry recovery and a bounded three-attempt failure policy. A stale worker cannot complete a job after its lease expires.
-- Added a renderer worker implementation: it claims work using the service role, renders the immutable payload, SHA-256 hashes the PDF, uploads it to private storage, and completes the lease-bound job. It processes at most two jobs per poll and is safe across replicas because the database owns leasing.
-- Hardened renderer source defaults: authentication is required unless explicitly disabled for a local demo; a dedicated `WISP_RENDERER_WORKER_TOKEN` protects internal worker triggering.
+- Final WISP generation is now a durable, database-leased job. The browser requests a job through the JWT-protected `wisp-generate` Edge Function; it no longer creates or uploads the final PDF.
+- Each job creates an immutable `wisp_versions` snapshot with a content hash, lifecycle state, and sequential version number. The server renderer builds the PDF from that snapshot, appends approved attachments, hashes it, uploads it to private storage, and records its exact size and hash.
+- The queue has idempotency, leases, expired-lease recovery, and a three-attempt failure limit. Multiple renderer instances cannot process the same job at once.
+- Signatures are append-only records against the exact immutable version. Activation requires both required roles on that same version; the old browser-driven signature/finalization path is no longer used.
+- Browser activation now calls `activate_wisp_version`; the legacy `activate_wisp_project` RPC has no API execute permission.
 
-## Verification
+## Security boundary
 
-- The complete local migration chain replayed successfully, including both Stage 4 migrations.
-- `npm test` passed (3/3) and `npm run build:staging` passed against staging ref `eugsdqwimpocfibmjfxa`.
-- Staging migrations `stage_04_versioned_wisp_foundation`, `stage_04_generation_payload_and_lifecycle`, and `stage_04_remove_legacy_generation_rpc` applied successfully.
-- `wisp-generate` Edge Function is ACTIVE at version 2 with JWT verification enabled.
+- Anonymous users cannot queue, claim, complete, fail, sign, or activate WISP jobs/versions.
+- Signed-in users can only queue, sign, and activate, and each RPC verifies project/firm authorization internally.
+- Claim, complete, and fail are renderer-only operations, granted solely to `service_role`.
+- Signed-in users cannot insert generated-file metadata or legacy signature rows directly. Final artifacts remain private and server-created.
 
-## Required cutover work
+## Staging evidence
 
-The current browser still calls the hosted Render endpoint and uploads a final artifact itself. The user has configured `WISP_REQUIRE_AUTH` and `WISP_RENDERER_WORKER_TOKEN` on Render, but the deployed Render container still needs this new source plus `SUPABASE_SERVICE_ROLE_KEY` and `WISP_RENDERER_WORKER_ENABLED=true` before it can safely claim and complete queue jobs.
+- Staging migrations applied: `stage_04_versioned_wisp_foundation`, `stage_04_generation_payload_and_lifecycle`, `stage_04_remove_legacy_generation_rpc`, `stage_04_immutable_cutover`, and `stage_04_rpc_privileges`.
+- `wisp-generate` Edge Function is active with JWT verification enabled.
+- A disposable staging user queued job `09f9f753-30c7-4be8-8e59-5097105b079a`. The renderer leased it once and completed it successfully.
+- The resulting immutable version `2bb83f9e-146a-4802-8eaa-b695fe75e409` was signed twice, then activated. Its server-rendered private PDF was 68,500 bytes with SHA-256 `5c46fee073c6f6c0095b3eb4452428b01714c59abc96e66d5ec10f1aec556c95`.
+- Effective privilege inspection confirmed anonymous access is false for every Stage 4 RPC; renderer-only operations are false for `authenticated` and true for `service_role`; direct legacy finalization writes are false for `authenticated`.
+- `node --check` passed for the browser and renderer sources, `npm test` passed (3/3), `npm run build:staging` passed, the staging-target guard confirmed `eugsdqwimpocfibmjfxa`, and the renderer Docker image built locally.
 
-The next Stage 4 increment must deploy this renderer source to the staging Render service, add its server-only worker credentials, prove a real queued PDF completes, and switch the frontend to enqueue-only generation. Only then can old direct signature/finalization writes be revoked without breaking users. This is intentionally not claimed complete yet.
+## Deferred to later stages
+
+- Formal firm invitations and signatory-role assignment are Stage 5 work. Stage 4 binds every signature to an authenticated account and immutable version, but does not yet model delegated compliance roles as memberships.
+- Broader legacy security-definer function review, leaked-password protection, performance indexing, backup rehearsal, and production promotion remain in the production-readiness plan.
