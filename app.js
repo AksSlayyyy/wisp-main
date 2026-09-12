@@ -7738,7 +7738,11 @@ async function handleAuthSubmit() {
       showToast("Signed in successfully.", "success");
     } else {
       const result = await signUpWithPassword({ email, password: state.authPassword, fullName: state.authName, firmName: state.authFirmName });
-      if (!result?.session) { setAuthError("Account created. Check your email to confirm your address, then sign in.", "success"); return; }
+      if (!result?.session) {
+        setAuthError("This account needs email confirmation, or it already exists. Use a new email address or sign in if you already created it.", "error");
+        return;
+      }
+      if (result?.user) beginAuthHandoff(result.user);
       showToast("Your firm workspace is ready.", "success");
     }
   } catch (error) {
