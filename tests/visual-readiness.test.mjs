@@ -30,6 +30,7 @@ test('partial assessments exclude missing answers from the provisional average',
 test('urgent actions precede lower priority actions and answers are escaped', () => {
   const html = render({ companyName: '<img src=x>', question_1: 'Partial', question_2: 'Absent', question_3: 'Strong' });
   assert.match(html, /Readiness: 50 out of 100/);
+  assert.match(html, /Recommended this week/);
   assert.ok(html.indexOf('data-edit-section="2"') < html.indexOf('data-edit-section="1"'));
   assert.match(html, /&lt;img src=x&gt;/);
   assert.doesNotMatch(html, /<img src=x>/);
