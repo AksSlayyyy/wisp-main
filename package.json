@@ -16,6 +16,7 @@
     "replay:local-supabase:apply": "node scripts/replay-local-supabase.mjs --apply --confirm-local-reset",
     "test": "node --test tests/*.test.mjs",
     "verify:stage-1": "npm run check:staging-target && npm test && npm run audit:backend-surface",
+    "verify:release": "npm run build:staging && node scripts/verify-release-readiness.mjs",
     "build:staging": "npm run check:staging-target && node scripts/build-cloudflare-static.mjs",
     "dev": "node scripts/local-dev-server.mjs",
     "build": "node scripts/build-cloudflare-static.mjs",
@@ -26,7 +27,7 @@
     "docx-preview": "^0.3.7",
     "govuk-frontend": "^6.4.0",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^6.1.200",
+    "pdfjs-dist": "6.3.289",
     "pg": "^8.22.0"
   },
   "devDependencies": {
