@@ -7430,116 +7430,64 @@ function formatValue(value) {
   return value || "Not provided";
 }
 function resultsScreen() {
-  const result = scoreAssessment();
-  const domainSummary = summarizeDomainReadiness(result.sectionScores);
-  const exposurePoints = topExposurePoints(result.flags);
-  const topFindings = result.flags.slice(0, 3);
-
-  const immediateCount = result.flags.filter(
-    (flag) => flag.priority === "Immediate",
-  ).length;
-
-  return shell(
-    `
-      <div class="screen-head results-screen-head">
-        <div>
-          <p class="eyebrow">Assessment complete</p>
-          <h1>Your WISP readiness summary</h1>
-          <p class="lead">A quick view of where the firm stands and what to address before building the plan.</p>
+  return shell(visualReadinessReport(), true);
+}
+function visualReadinessReport() {
+  const priorities = ["Immediate", "30 days", "90 days"];
+  const findings = getFlags().sort((a, b) => priorities.indexOf(a.priority) - priorities.indexOf(b.priority));
+  const answers = assessmentQuestions.map((question, index) => {
+    const answer = question.options.find(option => option.label === state.form[`question_${index + 1}`]);
+    return { question, index, answer, score: answer ? Math.round(answer.score / (Math.max(...question.options.map(option => option.score)) || 10) * 100) : null };
+  });
+  const answered = answers.filter(item => item.answer);
+  const missing = answers.length - answered.length;
+  const score = answered.length ? Math.round(answered.reduce((sum, item) => sum + item.score, 0) / answered.length) : null;
+  const tone = score === null ? "unknown" : score < 55 ? "urgent" : score < 75 ? "attention" : "healthy";
+  const counts = priorities.map(priority => findings.filter(flag => flag.priority === priority).length);
+  const strong = answered.length - findings.length;
+  const groups = [...new Set(assessmentQuestions.map(question => question.domain))].map(domain => {
+    const items = answers.filter(item => item.question.domain === domain);
+    const scored = items.filter(item => item.answer);
+    return { domain, total: items.length, answered: scored.length, score: scored.length ? Math.round(scored.reduce((sum, item) => sum + item.score, 0) / scored.length) : null };
+  }).sort((a, b) => (a.score ?? -1) - (b.score ?? -1));
+  const segments = [
+    { count: counts[0], label: "Immediate", tone: "urgent" },
+    { count: counts[1], label: "30 days", tone: "attention" },
+    { count: counts[2], label: "90 days", tone: "planned" },
+    { count: strong, label: "No gap flagged", tone: "healthy" },
+    { count: missing, label: "Unanswered", tone: "unknown" },
+  ];
+  const heading = !answered.length ? "Complete your assessment to see your priorities." : counts[0] ? `${counts[0]} safeguard${counts[0] === 1 ? " needs" : "s need"} your attention first.` : findings.length ? "Close the gaps. Strengthen your safeguards." : "A strong starting point. Keep it protected.";
+  return `
+    <div class="screen-head results-screen-head"><div><p class="eyebrow">Your security snapshot</p><h1>WISP readiness report</h1><p class="lead">${escapeHtml(state.form.companyName || "Your firm")} · See the gaps. Know what to do next.</p></div><span class="section-step-pill">${answered.length} / ${answers.length} answered</span></div>
+    <div class="readiness-report">
+      <section class="readiness-overview ${tone}">
+        <div class="readiness-gauge-block">
+          <div class="readiness-gauge" role="img" aria-label="${score === null ? "Readiness not assessed" : `${missing ? "Provisional readiness" : "Readiness"}: ${score} out of 100`}">
+            <svg viewBox="0 0 200 200" aria-hidden="true"><circle class="gauge-track" cx="100" cy="100" r="84"/><circle class="gauge-value" cx="100" cy="100" r="84" pathLength="100" stroke-dasharray="${score ?? 0} 100"/></svg>
+            <div><strong>${score ?? "—"}</strong><span>${score === null ? "Not assessed" : "out of 100"}</span></div>
+          </div>
+          <strong>${missing ? "Provisional readiness" : "Readiness score"}</strong><span class="readiness-caption">Higher means stronger reported safeguards</span>
         </div>
-        <span class="section-step-pill">Completed</span>
-      </div>
-      <div class="results results--compact">
-        <section class="results-hero ${severityClass(result.label)}">
-          <div class="results-hero-score">
-            <div class="results-hero-score-value">${result.overall}</div>
-            <div class="results-hero-score-meta">Readiness score / 100</div>
-            <span class="severity ${severityClass(result.label)}">${result.label}</span>
-          </div>
-          <div class="results-hero-copy">
-            <p class="results-hero-kicker">Your assessment at a glance</p>
-            <h2>${resultsAlertHeading(result)}</h2>
-            <p>${result.summary}</p>
-          </div>
-        </section>
-
-        <section class="results-quick-grid" aria-label="Assessment highlights">
-          <article class="results-quick-stat">
-            <span>Primary exposure</span>
-            <strong>${escapeHtml(result.topArea)}</strong>
-          </article>
-          <article class="results-quick-stat">
-            <span>Items to review</span>
-            <strong>${result.flags.length}</strong>
-          </article>
-          <article class="results-quick-stat">
-            <span>Immediate priority</span>
-            <strong>${immediateCount ? `${immediateCount} item${immediateCount === 1 ? "" : "s"}` : "None"}</strong>
-          </article>
-        </section>
-
-        <section class="card pad results-priority-card">
-          <div class="card-head">
-            <div class="card-title-block">
-              <h3>Start here</h3>
-              <p>The most important items surfaced by your answers.</p>
-            </div>
-          </div>
-          <div class="results-priority-list">
-            ${topFindings.map((flag, index) => compactRiskFinding(flag, index)).join("")}
-          </div>
-        </section>
-
-        <section class="results-next-card">
-          <div>
-            <p class="results-hero-kicker">Next step</p>
-            <h3>Turn these findings into your WISP</h3>
-            <p>Your assessment is saved. The WISP Builder will use it as the foundation for the plan.</p>
-          </div>
-          <button class="btn primary" type="button" data-action="nav-builder-home">Continue to WISP Builder</button>
-        </section>
-
-        <details class="results-detail-drawer">
-          <summary>
-            <span>View detailed findings and recommendations</span>
-            <small>All ${result.sectionScores.length - 1} scored sections</small>
-          </summary>
-          <div class="results-detail-content">
-            <section class="results-alert-band ${severityClass(result.label)}">
-              <div class="results-alert-band-head">
-                <h3>What this means operationally</h3>
-                <span class="results-alert-pill">${result.label}</span>
-              </div>
-              <div class="results-alert-list">
-                ${exposurePoints.map((item) => `<div class="results-alert-item">${item}</div>`).join("")}
-              </div>
-            </section>
-            <section class="card pad results-domain-section">
-              <div class="card-head"><div class="card-title-block"><h3>Risk by control area</h3><p>Where gaps are clustering across the assessment.</p></div></div>
-              <div class="results-domain-grid">${domainSummary.map((domain) => resultsDomainCard(domain)).join("")}</div>
-            </section>
-            <section class="card pad results-readiness-card">
-              <div class="card-head"><div class="card-title-block"><h3>Section readiness</h3><p>Scores across all assessment sections.</p></div></div>
-              <div class="score-table">${result.sectionScores.map((row) => `<div class="score-row"><strong>${row.name}</strong><div class="bar ${row.score < 55 ? "risk" : row.score < 75 ? "warn" : ""}"><span style="width:${row.score}%"></span></div><span class="severity ${row.score < 55 ? "high" : row.score < 75 ? "medium" : "good"}">${row.score} � ${scoreLabel(row.score)}</span></div>`).join("")}</div>
-            </section>
-            <section class="card pad">
-              <div class="card-head"><div class="card-title-block"><h3>Full recommendation plan</h3><p>Use this sequence to reduce exposure over time.</p></div></div>
-              ${recommendationBlock("Immediate", result.recommendations.immediate, "Address these first.")}
-              ${recommendationBlock("Within 30 Days", result.recommendations.thirty, "Strengthen process and documentation gaps.")}
-              ${recommendationBlock("Within 90 Days", result.recommendations.ninety, "Formalize the remaining safeguards.")}
-            </section>
-            <section class="card pad results-detail-narrative"><h3>Assessment summary</h3><p>${result.narrative}</p></section>
-          </div>
-        </details>
-
-        <div class="footer-actions">
-          <button class="btn secondary" data-action="review" type="button">Update answers</button>
-          <button class="btn secondary" data-action="view-summary" type="button">View submitted answers</button>
+        <div class="readiness-overview-copy"><p class="eyebrow">${!answered.length ? "Answers needed" : counts[0] ? "Action needed" : findings.length ? "Room to improve" : "Keep the momentum"}</p><h2>${heading}</h2><p>${counts[0] ? "Start with the immediate items below. Assign an owner and confirm each safeguard is working." : findings.length ? "Use the priorities below to turn partial safeguards into consistent protection." : "Confirm your answers with evidence and review your safeguards when your firm changes."}</p>
+          <div class="readiness-headline-metrics"><div><strong>${findings.length}</strong><span>gaps identified</span></div><div><strong>${strong}</strong><span>answers with no gap flagged</span></div><div><strong>${missing}</strong><span>still to assess</span></div></div>
+          ${missing ? `<p class="readiness-incomplete">${missing} unanswered question${missing === 1 ? " is" : "s are"} excluded from this score. Complete them for a full picture.</p>` : ""}
         </div>
+      </section>
+      <div class="readiness-chart-grid">
+        <section class="readiness-panel"><div class="readiness-panel-head"><p class="eyebrow">Where to focus</p><h2>Readiness by security area</h2><p>Lowest scores first · out of 100</p></div>
+          <div class="readiness-domain-chart">${groups.map(group => `<div class="readiness-domain-row"><div><strong>${escapeHtml(group.domain)}</strong><span>${group.score === null ? "Not assessed" : `${group.score} / 100`}</span></div><div class="readiness-bar ${group.score === null ? "unknown" : group.score < 55 ? "urgent" : group.score < 75 ? "attention" : "healthy"}" aria-hidden="true"><span style="width:${group.score ?? 0}%"></span></div><small>${group.answered} of ${group.total} answered${group.score === null ? "" : ` · ${group.score < 55 ? "Prioritize improvement" : group.score < 75 ? "Needs strengthening" : "Stronger reported safeguards"}`}</small></div>`).join("")}</div>
+        </section>
+        <section class="readiness-panel"><div class="readiness-panel-head"><p class="eyebrow">Your action mix</p><h2>What needs attention?</h2><p>Every assessment question, accounted for.</p></div><div class="readiness-stack" aria-hidden="true">${segments.filter(item => item.count).map(item => `<span class="${item.tone}" style="flex:${item.count}"></span>`).join("")}</div><div class="readiness-legend">${segments.map(item => `<div><span class="readiness-dot ${item.tone}" aria-hidden="true"></span><span>${item.label}</span><strong>${item.count}</strong></div>`).join("")}</div><div class="readiness-explainer"><strong>Priorities, not a countdown</strong><p>Suggested action windows come from your answers. They are not legal deadlines or a prediction of a breach.</p></div></section>
       </div>
-    `,
-    true,
-  );
+      <section class="readiness-panel"><div class="readiness-panel-head"><p class="eyebrow">Your next moves</p><h2>${findings.length ? "Start with these safeguards" : "Maintain the safeguards you reported"}</h2><p>${findings.length ? "Ordered by urgency. Expand each action for the answer behind it." : "No gaps were flagged in the answers provided. Keep evidence that your controls work."}</p></div><div class="readiness-actions">${findings.slice(0, 3).map((flag, index) => visualReadinessAction(flag, index)).join("")}</div>${findings.length > 3 ? `<details class="readiness-more"><summary>View ${findings.length - 3} more actions</summary><div class="readiness-actions">${findings.slice(3).map((flag, index) => visualReadinessAction(flag, index + 3)).join("")}</div></details>` : ""}</section>
+      <section class="results-next-card"><div><p class="results-hero-kicker">Put your priorities into practice</p><h3>Build the plan. Then implement the safeguards.</h3><p>Your answers inform your WISP. Creating the document does not resolve the gaps by itself.</p></div><button class="btn primary" type="button" data-action="nav-builder-home">Continue to WISP Builder</button></section>
+      <details class="results-detail-drawer"><summary><span>How to read this report</span><small>Scoring &amp; limitations</small></summary><div class="results-detail-content"><p>Each answered question is scored against its highest available option. Readiness is the average of those scores; security-area bars average the answered questions in each area. Practice details do not affect the score.</p><p>Question scores of 0–25 receive immediate priority, above 25–55 receive a 30-day priority, and above 55–75 receive a 90-day priority. Higher scores have no gap flagged. Unanswered questions are shown separately.</p><p>This is a snapshot of self-reported safeguards, not an independent security audit or compliance certification.</p></div></details>
+      <div class="footer-actions"><button class="btn secondary" data-action="review" type="button">Update answers</button><button class="btn secondary" data-action="view-summary" type="button">View submitted answers</button></div>
+    </div>`;
+}
+function visualReadinessAction(flag, index) {
+  return `<details class="readiness-action"><summary><span class="readiness-action-number">${String(index + 1).padStart(2, "0")}</span><span class="readiness-action-title"><small>${escapeHtml(flag.area)}</small><strong>${escapeHtml(sections[flag.sectionIndex] || flag.title)}</strong></span><span class="severity ${flag.priority === "Immediate" ? "high" : "medium"}">${escapeHtml(flag.priority)}</span><span class="readiness-expand" aria-hidden="true">+</span></summary><div class="readiness-action-body"><p><strong>Your answer</strong><br>${escapeHtml(state.form[`question_${flag.sectionIndex}`] || "Not provided")}</p><p><strong>Take action</strong><br>${escapeHtml(flag.fix)}</p><button class="btn secondary small" data-edit-section="${flag.sectionIndex}" type="button">Review answer</button></div></details>`;
 }
 function compactRiskFinding(flag, index) {
   return `
