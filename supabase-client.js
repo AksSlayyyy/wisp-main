@@ -802,6 +802,54 @@ export async function updateWorkspaceAuthProfile({
   currentUserCache = data?.user || user;
   return currentUserCache;
 }
+
+export async function listFirmAccessDirectory() {
+  if (!hasClient()) return { members: [], invitations: [] };
+  const firm = await getActiveFirm();
+  if (!firm) return { members: [], invitations: [] };
+  const { data, error } = await supabase.rpc("list_firm_access_directory", { p_firm_id: firm.id });
+  if (error) throw error;
+  return data || { members: [], invitations: [] };
+}
+
+async function invokeMemberAdmin(payload) {
+  if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
+  const { data, error } = await supabase.functions.invoke("member-admin", {
+    body: { ...payload, appOrigin: window.location.origin },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function inviteFirmMember({ email, role }) {
+  const firm = await getActiveFirm();
+  if (!firm) throw new Error("Your firm workspace is unavailable.");
+  return invokeMemberAdmin({ action: "invite", firmId: firm.id, email, role });
+}
+
+export async function resendFirmInvitation(invitationId) {
+  return invokeMemberAdmin({ action: "resend", invitationId });
+}
+
+export async function revokeFirmInvitation(invitationId) {
+  const { data, error } = await supabase.rpc("revoke_firm_invitation", { p_invitation_id: invitationId });
+  if (error) throw error;
+  return data;
+}
+
+export async function changeFirmMemberRole(membershipId, role) {
+  const { data, error } = await supabase.rpc("set_firm_membership_role", { p_membership_id: membershipId, p_role: role });
+  if (error) throw error;
+  return data;
+}
+
+export async function disableFirmMember(membershipId) {
+  const { data, error } = await supabase.rpc("disable_firm_membership", { p_membership_id: membershipId });
+  if (error) throw error;
+  return data;
+}
+
 export async function saveWispDraft(builderDrafts, meta = {}) {
   if (!hasClient()) return null;
   const firm = await getActiveFirm();
@@ -1403,6 +1451,19 @@ async function getActiveFirm() {
   if (firmCache) return firmCache;
   const user = await getAuthenticatedUser();
   if (!user?.id) return null;
+
+  // An invitation link is not bearer authorization. The database also checks
+  // that the signed-in account's verified email is the invited address.
+  const invitationId = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("invite")
+    : null;
+  if (invitationId && /^[0-9a-f-]{36}$/i.test(invitationId)) {
+    const { error: acceptError } = await supabase.rpc("accept_firm_invitation", {
+      p_invitation_id: invitationId,
+    });
+    if (acceptError) throw acceptError;
+    window.history.replaceState({}, "", `${window.location.pathname}${window.location.hash}`);
+  }
 
   const { data, error } = await supabase
     .from("firm_memberships")
@@ -2245,6 +2306,17 @@ export async function signInWithMagicLink(email) {
     email,
     options: { emailRedirectTo: redirectTo },
   });
+  if (error) throw error;
+  return true;
+}
+
+export async function requestPasswordRecovery(email) {
+  if (!hasClient()) throw new Error("Supabase auth is unavailable.");
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    String(email || "").trim(),
+    { redirectTo },
+  );
   if (error) throw error;
   return true;
 }

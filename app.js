@@ -31,6 +31,7 @@ let reorderWispAttachments = async () => {};
 let deleteWispProject = async () => {};
 let supabaseBackendLoaded = false;
 let signInWithMagicLink = async () => {};
+let requestPasswordRecovery = async () => {};
 let signInWithPassword = async () => {};
 let signUpWithPassword = async () => {};
 let signOutCurrentUser = async () => {};
@@ -45,6 +46,12 @@ let onboardingLogoFile = null;
 let onboardingLogoPreviewUrl = null;
 const MAX_COMPANY_LOGO_BYTES = 5 * 1024 * 1024;
 let updateWorkspaceAuthProfile = async () => null;
+let listFirmAccessDirectory = async () => ({ members: [], invitations: [] });
+let inviteFirmMember = async () => null;
+let resendFirmInvitation = async () => null;
+let revokeFirmInvitation = async () => null;
+let changeFirmMemberRole = async () => null;
+let disableFirmMember = async () => null;
 let saveFirmStaffMember = async () => null;
 let deleteFirmStaffMember = async () => null;
 let uploadDocuments = async () => [];
@@ -1104,6 +1111,7 @@ let state = {
   settingsModal: null,
   settingsLogo: null,
   settingsData: defaultSettingsData(),
+  accessDirectory: { members: [], invitations: [] },
   showPlanModal: false,
   planBillingCycle: "monthly",
   selectedAdditionalService: null,
@@ -2184,6 +2192,12 @@ async function bootstrapApp() {
         supabaseModule.resetFirmOnboardingForTesting || resetFirmOnboardingForTesting;
       updateWorkspaceAuthProfile =
         supabaseModule.updateWorkspaceAuthProfile || updateWorkspaceAuthProfile;
+      listFirmAccessDirectory = supabaseModule.listFirmAccessDirectory || listFirmAccessDirectory;
+      inviteFirmMember = supabaseModule.inviteFirmMember || inviteFirmMember;
+      resendFirmInvitation = supabaseModule.resendFirmInvitation || resendFirmInvitation;
+      revokeFirmInvitation = supabaseModule.revokeFirmInvitation || revokeFirmInvitation;
+      changeFirmMemberRole = supabaseModule.changeFirmMemberRole || changeFirmMemberRole;
+      disableFirmMember = supabaseModule.disableFirmMember || disableFirmMember;
       saveFirmStaffMember =
         supabaseModule.saveFirmStaffMember || saveFirmStaffMember;
       deleteFirmStaffMember =
@@ -2236,6 +2250,8 @@ async function bootstrapApp() {
         supabaseModule.signUpWithPassword || signUpWithPassword;
       signInWithMagicLink =
         supabaseModule.signInWithMagicLink || signInWithMagicLink;
+      requestPasswordRecovery =
+        supabaseModule.requestPasswordRecovery || requestPasswordRecovery;
       signOutCurrentUser =
         supabaseModule.signOutCurrentUser || signOutCurrentUser;
       subscribeToAuthChanges =
@@ -4342,18 +4358,36 @@ function settingsPaymentMethodEditor() {
 function renderSettingsTabPanel() {
   const settings = getSettingsData();
   if (state.settingsTab === "company") return settingsCompanyInfoTab();
-  if (state.settingsTab === "billing") return settingsSubscriptionBillingTab();
-  if (state.settingsTab === "billing-card")
-    return settingsPaymentMethodEditor();
+  if (state.settingsTab === "billing" || state.settingsTab === "billing-card") return settingsBillingUnavailableTab();
   if (state.settingsTab === "users") return settingsUserManagementTab();
   if (state.settingsTab === "staff") return settingsStaffTab();
   if (state.settingsTab === "logs") return settingsActivityLogsTab();
   if (state.settingsTab !== "profile") return settingsPlaceholderTab();
   return `      <section class="settings-card">        <div class="settings-card-head">          <div class="settings-card-title">            <span class="settings-card-icon" aria-hidden="true">              <svg viewBox="0 0 20 20">                <path d="M10 2.75 4.65 4.9v4.2c0 3.15 1.95 5.95 5.35 8.15 3.4-2.2 5.35-5 5.35-8.15V4.9Z"></path>                <path d="m7.65 10.15 1.55 1.6 3.15-3.35"></path>              </svg>            </span>            <h2>Sign-In &amp; Security</h2>          </div>        </div>          <div class="settings-rows">          <div class="settings-row">            <div class="settings-row-label">Email Address</div>            <div class="settings-row-value">              <strong>${escapeHtml(settings.profile.email)}</strong>              <span class="settings-verified"><span class="settings-verified-dot"></span>Verified</span>            </div>            <div class="settings-row-action">              <button class="settings-text-action" type="button" data-settings-action="change-email">Change Email</button>            </div>          </div>          <div class="settings-row">            <div class="settings-row-label">Password</div>            <div class="settings-row-value">              <strong>&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</strong>              <span>Last updated ${escapeHtml(settingsDisplayDate(settings.profile.passwordUpdatedAt))}</span>            </div>            <div class="settings-row-action">              <button class="settings-text-action" type="button" data-settings-action="update-password">Update Password</button>            </div>          </div>          <div class="settings-row">            <div class="settings-row-label">Multi-Factor Authentication</div>            <div class="settings-row-value">              <strong>${settings.profile.mfaEnabled ? "Enhanced account security enabled." : "MFA is currently disabled."}</strong>              <span>Method: ${escapeHtml(settings.profile.mfaMethod)} | Verified on ${escapeHtml(settingsDisplayDate(settings.profile.mfaVerifiedOn))}.</span>            </div>            <div class="settings-row-action">              <button class="settings-text-action" type="button" data-settings-action="change-mfa">Change Method</button>            </div>          </div>        </div>      </section>      <section class="settings-card settings-card-info">        <div class="settings-card-head settings-card-head-split">          <div class="settings-card-title"><h2>My Info</h2></div>          <button class="btn primary settings-main-action" type="button" data-settings-action="edit-profile">Change my info</button>        </div>        <div class="settings-rows">          <div class="settings-row">            <div class="settings-row-label">Name</div>            <div class="settings-row-value"><strong>${escapeHtml(settings.profile.name)}</strong></div>            <div class="settings-row-action"></div>          </div>        </div>      </section>  `;
 }
+function settingsBillingUnavailableTab() {
+  return `    <section class="settings-card settings-card-info"><div class="settings-card-head"><div class="settings-card-title"><h2>Subscription &amp; Billing</h2><p>Payments are not enabled in this staging release.</p></div></div><div class="settings-payment-empty-state"><strong>Billing controls are intentionally unavailable.</strong><p>EasyWISP does not collect card numbers, CVVs, or payment details in the application. A future launch will use a hosted payment provider checkout with server-verified entitlements.</p></div></section>`;
+}
 function settingsUserManagementTab() {
-  const settings = getSettingsData();
-  const users = settings.users;
+  const directory = state.accessDirectory || { members: [], invitations: [] };
+  const currentUserId = state.authUser?.id;
+  const users = [
+    ...(directory.members || []).map((member) => {
+      const parts = String(member.name || "").trim().split(/\s+/);
+      return {
+        id: member.id, kind: "member", memberId: member.id,
+        firstName: parts[0] || "Member", lastName: parts.slice(1).join(" "),
+        email: member.email || "", permission: member.role, status: member.status,
+        isCurrent: member.user_id === currentUserId,
+        actions: member.user_id === currentUserId || member.role === "owner" ? [] : ["Change role", "Disable member"],
+      };
+    }),
+    ...(directory.invitations || []).map((invitation) => ({
+      id: invitation.id, kind: "invitation", firstName: "Pending", lastName: "invitation",
+      email: invitation.email || "", permission: invitation.role, status: invitation.status,
+      actions: ["Resend invitation", "Revoke invitation"],
+    })),
+  ];
   const permissionLevels = [
     {
       title: "Basic",
@@ -4380,7 +4414,7 @@ function settingsUserManagementTab() {
       ],
     },
   ];
-  return `    <section class="settings-card settings-card-info">      <div class="settings-card-head settings-card-head-split">        <div class="settings-card-title"><h2>Users</h2></div>        <button class="btn primary settings-main-action" type="button" data-settings-action="invite-user">Invite User</button>      </div>      <div class="settings-users-table">        <div class="settings-users-head settings-users-grid">          <div>First Name</div><div>Last Name</div><div>Email</div><div>Permission Level</div><div>Status</div><div>Actions</div>        </div>        ${users.map((user) => `          <div class="settings-users-row settings-users-grid">            <div class="settings-users-cell"><strong>${escapeHtml(user.firstName)}</strong></div>            <div class="settings-users-cell">${escapeHtml(user.lastName)}</div>            <div class="settings-users-cell settings-users-email">${escapeHtml(user.email)}</div>            <div class="settings-users-cell"><span class="settings-permission-pill">${escapeHtml(user.permission)}</span></div>            <div class="settings-users-cell"><span class="settings-status-pill settings-status-pill-${String(user.status || "").toLowerCase()}">${escapeHtml(user.status)}</span></div>            <div class="settings-users-cell settings-users-actions">              ${user.actions?.length ? `<div class="settings-users-action-links">${user.actions.map((action) => `<button class="settings-text-action" type="button" data-user-id="${attr(user.id)}" data-user-action="${attr(action)}">${escapeHtml(action)}</button>`).join("")}</div>` : `<span class="settings-users-action-muted">Current user</span>`}            </div>          </div>`).join("")}      </div>      <div class="settings-invite-note">        <div class="settings-invite-copy">          <strong>${escapeHtml(String(settings.billing.inviteSeatsRemaining))} user invite remaining on your current subscription.</strong>          <p>Need more access seats for firm leadership or support staff? Expand your subscription to add more users.</p>        </div>        <button class="btn secondary settings-upgrade-action" type="button" data-action="open-plan-modal">Upgrade to add more users</button>      </div>    </section>    <section class="settings-card settings-card-info">      <div class="settings-card-head"><div class="settings-card-title"><h2>Permission Levels</h2></div></div>      <div class="settings-permission-grid">        ${permissionLevels.map((level) => `<article class="settings-permission-card"><h3>${level.title}</h3><ul>${level.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></article>`).join("")}      </div>    </section>  `;
+  return `    <section class="settings-card settings-card-info">      <div class="settings-card-head settings-card-head-split">        <div class="settings-card-title"><h2>Firm access</h2><p>Membership and invitations are server-managed.</p></div>        <button class="btn primary settings-main-action" type="button" data-settings-action="invite-user">Invite User</button>      </div>      <div class="settings-users-table">        <div class="settings-users-head settings-users-grid">          <div>First Name</div><div>Last Name</div><div>Email</div><div>Permission Level</div><div>Status</div><div>Actions</div>        </div>        ${users.length ? users.map((user) => `          <div class="settings-users-row settings-users-grid">            <div class="settings-users-cell"><strong>${escapeHtml(user.firstName)}</strong></div><div class="settings-users-cell">${escapeHtml(user.lastName)}</div><div class="settings-users-cell settings-users-email">${escapeHtml(user.email)}</div><div class="settings-users-cell"><span class="settings-permission-pill">${escapeHtml(user.permission)}</span></div><div class="settings-users-cell"><span class="settings-status-pill settings-status-pill-${String(user.status || "").toLowerCase()}">${escapeHtml(user.status)}</span></div><div class="settings-users-cell settings-users-actions">${user.actions?.length ? `<div class="settings-users-action-links">${user.actions.map((action) => `<button class="settings-text-action" type="button" data-user-id="${attr(user.id)}" data-user-kind="${attr(user.kind)}" data-user-action="${attr(action)}">${escapeHtml(action)}</button>`).join("")}</div>` : `<span class="settings-users-action-muted">${user.isCurrent ? "Current user" : "Protected"}</span>`}</div>          </div>`).join("") : `<div class="settings-users-row"><div class="settings-users-cell">No other firm members or pending invitations.</div></div>`}      </div>      <div class="settings-invite-note"><div class="settings-invite-copy"><strong>Invite delivery uses Supabase Auth email.</strong><p>Email delivery must be configured in Supabase before inviting external testers.</p></div></div>    </section>    <section class="settings-card settings-card-info">      <div class="settings-card-head"><div class="settings-card-title"><h2>Permission Levels</h2></div></div>      <div class="settings-permission-grid">        ${permissionLevels.map((level) => `<article class="settings-permission-card"><h3>${level.title}</h3><ul>${level.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></article>`).join("")}      </div>    </section>  `;
 }
 function getAdditionalServiceDetails(serviceId) {
   const services = {
@@ -7710,7 +7744,38 @@ async function handleAuthSubmit() {
     state.authBusy = false;
     syncAuthFormState();
   }
-}function render() {
+}
+async function handlePasswordRecovery() {
+  const email = String(state.authEmail || "").trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    setAuthError("Enter your email address first, then select Forgot password.");
+    return;
+  }
+  state.authBusy = true;
+  syncAuthFormState();
+  try {
+    await requestPasswordRecovery(email);
+    setAuthError("If an account exists for that email, a password-reset link has been sent.", "success");
+  } catch (error) {
+    setAuthError(error?.message || "Unable to start password recovery right now.");
+  } finally {
+    state.authBusy = false;
+    syncAuthFormState();
+  }
+}
+function installPasswordRecoveryControls(scope = document) {
+  scope.querySelectorAll(".auth-remember").forEach((remember) => {
+    if (remember.parentElement?.querySelector("[data-auth-recovery]")) return;
+    const button = document.createElement("button");
+    button.className = "auth-switch-btn auth-recovery-btn";
+    button.type = "button";
+    button.dataset.authRecovery = "1";
+    button.textContent = "Forgot password?";
+    button.addEventListener("click", handlePasswordRecovery);
+    remember.insertAdjacentElement("afterend", button);
+  });
+}
+function render() {
   if (state.authAvailable && !state.authReady) {
     app.innerHTML = `<div class="app"><main class="auth-shell"><section class="auth-card auth-card-loading"><p>Checking your workspace session...</p></section></main></div>`;
     lastRenderedScreen = null;
@@ -7941,6 +8006,7 @@ function bindEvents() {
       switchAuthTab(button.dataset.authTab);
     });
   }); // Event delegation for dynamically added [data-auth-tab] inside the form wrap
+  installPasswordRecoveryControls(document);
   const authContainer = document.querySelector(".auth-split-form");
   if (authContainer && !authContainer.dataset.authDelegated) {
     authContainer.dataset.authDelegated = "1";
@@ -7971,6 +8037,7 @@ function bindEvents() {
     }
   }
   function bindAuthFormEvents(scope) {
+    installPasswordRecoveryControls(scope);
     scope.querySelectorAll("[data-auth-form]").forEach((el) =>
       el.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -8291,8 +8358,15 @@ function bindEvents() {
       });
     });
   document.querySelectorAll("[data-settings-tab]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       state.settingsTab = button.dataset.settingsTab;
+      if (state.settingsTab === "users") {
+        try {
+          state.accessDirectory = await listFirmAccessDirectory();
+        } catch (error) {
+          showToast(error?.message || "Unable to load firm members.", "error");
+        }
+      }
       render();
     });
   });
@@ -9325,7 +9399,7 @@ function settingsDisplayDate(value) {
 function settingsPlaceholderTab() {
   return `<section class="settings-card"><div class="settings-card-body"><p class="settings-placeholder">This section is coming soon.</p></div></section>`;
 }
-function handleSettingsAction(action) {
+async function handleSettingsAction(action) {
   const settings = getSettingsData();
   if (action === "change-email") {
     state.settingsModal = {
@@ -9521,36 +9595,19 @@ function handleSettingsAction(action) {
     render();
   }
   if (action === "invite-user") {
-    const firstName = promptForValue("Enter the user's first name", "");
-    if (!firstName) return;
-    const lastName = promptForValue("Enter the user's last name", "");
-    if (lastName == null) return;
     const email = promptForValue("Enter the user's email", "");
     if (!email) return;
-    const permission = promptForValue(
-      "Enter permission level (Basic, Manager, Administrator)",
-      "Basic",
-    );
-    if (!permission) return;
-    updateSettingsState(
-      (draft) => {
-        draft.users.unshift({
-          id: `user-${Date.now()}`,
-          firstName,
-          lastName,
-          email,
-          permission,
-          status: "Invited",
-          actions: ["Resend Invitation", "Revoke Invitation"],
-        });
-        draft.billing.inviteSeatsRemaining = Math.max(
-          0,
-          Number(draft.billing.inviteSeatsRemaining || 0) - 1,
-        );
-      },
-      "User Updated",
-      `Invited ${firstName} ${lastName} (${email})`,
-    );
+    const role = promptForValue("Choose access role: admin, editor, or viewer", "editor");
+    if (!role) return;
+    try {
+      const result = await inviteFirmMember({ email, role });
+      if (result?.inviteLink && result?.status === "existing_account") window.prompt("Copy the secure invitation link", result.inviteLink);
+      showToast(result?.status === "existing_account" ? "Existing account: copy the invitation link." : "Invitation created and sent.", "success");
+      await refreshFirmAccessDirectory();
+    } catch (error) {
+      showToast(error?.message || "Unable to send the invitation.", "error");
+    }
+    return;
   }
   if (action === "add-staff") {
     state.editingStaffId = null;
@@ -9632,30 +9689,33 @@ function handleSettingsPlanSelection(planName) {
   state.showPlanModal = false;
   render();
 }
-function handleSettingsUserAction(userId, action) {
+async function refreshFirmAccessDirectory() {
+  state.accessDirectory = await listFirmAccessDirectory();
+  render();
+}
+async function handleSettingsUserAction(userId, action) {
   if (!userId || !action) return;
-  if (action === "Resend Invitation") {
-    updateSettingsState(
-      (draft) => {
-        const user = draft.users.find((entry) => entry.id === userId);
-        if (user) user.lastInvitationSentAt = new Date().toISOString();
-      },
-      "User Updated",
-      `Resent invitation to user ${userId}`,
-      { immediate: true },
-    );
-    return;
-  }
-  if (action === "Revoke Invitation") {
-    updateSettingsState(
-      (draft) => {
-        draft.users = draft.users.filter((user) => user.id !== userId);
-        draft.billing.inviteSeatsRemaining =
-          Number(draft.billing.inviteSeatsRemaining || 0) + 1;
-      },
-      "User Updated",
-      `Revoked invitation for user ${userId}`,
-    );
+  try {
+    if (action === "Resend invitation") {
+      const result = await resendFirmInvitation(userId);
+      if (result?.inviteLink) window.prompt("Copy the secure invitation link", result.inviteLink);
+      showToast(result?.status === "existing_account" ? "Copy the invitation link for the existing account." : "Invitation sent.", "success");
+    } else if (action === "Revoke invitation") {
+      await revokeFirmInvitation(userId);
+      showToast("Invitation revoked.", "success");
+    } else if (action === "Change role") {
+      const role = promptForValue("Choose access role: admin, editor, or viewer", "editor");
+      if (!role) return;
+      await changeFirmMemberRole(userId, role);
+      showToast("Member role updated.", "success");
+    } else if (action === "Disable member") {
+      if (!window.confirm("Disable this member's access immediately?")) return;
+      await disableFirmMember(userId);
+      showToast("Member access disabled.", "success");
+    }
+    await refreshFirmAccessDirectory();
+  } catch (error) {
+    showToast(error?.message || "Unable to update firm access.", "error");
   }
 }
 async function handleStaffRemove(staffId) {
