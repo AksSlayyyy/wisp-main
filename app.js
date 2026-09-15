@@ -1708,8 +1708,44 @@ function getBuilderDraftMeta(meta = {}) {
       ...(state.wispProject?.assessment_snapshot || {}),
       ...(meta.assessmentSnapshot || {}),
       builderTopicIndex: state.builderTopicIndex,
+      signatories: getWispResponsibleOfficials(),
     },
   };
+}
+const WISP_SIGNATORY_ROLES = [
+  {
+    wispRole: "principal_operating_officer",
+    role: "Principal Operating Officer",
+    fallbackKey: "principalOperatingOfficer",
+  },
+  {
+    wispRole: "data_security_coordinator",
+    role: "Data Security Coordinator",
+    fallbackKey: "dataSecurityCoordinator",
+  },
+];
+function buildWispResponsibleOfficials({ snapshot = [], staff = [], form = {} } = {}) {
+  const savedOfficials = Array.isArray(snapshot) ? snapshot : [];
+  const activeStaff = Array.isArray(staff) ? staff : [];
+  return WISP_SIGNATORY_ROLES.map((definition) => {
+    const saved = savedOfficials.find((official) => official?.wispRole === definition.wispRole || official?.role === definition.role);
+    const member = activeStaff.find((staffMember) => staffMember?.wisp_role === definition.wispRole);
+    const name = String(saved?.name || member?.full_name || member?.name || form[definition.fallbackKey] || "").trim();
+    if (!name) return null;
+    return {
+      name,
+      email: String(saved?.email || member?.email || "").trim(),
+      role: definition.role,
+      wispRole: definition.wispRole,
+    };
+  }).filter(Boolean);
+}
+function getWispResponsibleOfficials(project = state.wispProject) {
+  return buildWispResponsibleOfficials({
+    snapshot: project?.assessment_snapshot?.signatories,
+    staff: state.settingsData?.staff,
+    form: state.form,
+  });
 }
 function getSavedBuilderTopicIndex() {
   const savedIndex = Number(
@@ -6675,22 +6711,7 @@ const implementationDate = wisp?.activated_at || wisp?.updated_at;
       : "--";
     const firmName =
       state.firmProfile?.name || state.form.companyName || "Your firm";
-    const signatoryEmail =
-      state.form.email || state.firmProfile?.email || "Not provided";
-    const signatories = [
-      {
-        name: state.form.principalOperatingOfficer,
-        role: "Principal Operating Officer",
-      },
-      {
-        name: state.form.dataSecurityCoordinator,
-        role: "Data Security Coordinator",
-      },
-      {
-        name: state.form.publicInformationOfficer,
-        role: "Public Information Officer",
-      },
-    ].filter((person) => String(person.name || "").trim());
+    const signatories = getWispResponsibleOfficials(wisp);
     const signatoryRows = signatories.length
       ? signatories
           .map((person) => {
@@ -6718,7 +6739,7 @@ const implementationDate = wisp?.activated_at || wisp?.updated_at;
                   '" data-signatory-role="' +
                   attr(person.role) +
                   '" data-signatory-email="' +
-                  attr(signatoryEmail) +
+                  attr(person.email || "") +
                   '">Sign WISP</button>'
                 : '<span class="wisp-signature-saved">Not required</span>';
             return (
@@ -6727,7 +6748,7 @@ const implementationDate = wisp?.activated_at || wisp?.updated_at;
               "</td><td>" +
               escapeHtml(person.role) +
               "</td><td>" +
-              escapeHtml(signatoryEmail) +
+              escapeHtml(person.email || "Not provided") +
               '</td><td><span class="wisp-signatory-status">' +
               viewLabel +
               "</span></td><td>" +
