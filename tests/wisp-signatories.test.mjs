@@ -70,3 +70,37 @@ test("a finalized WISP keeps its recorded officials if staff changes later", asy
   assert.equal(officials[0].email, "original@example.test");
   assert.equal(officials[1].name, "Dana Security");
 });
+
+test("builder assignments take precedence over saved and staff fallbacks", async () => {
+  const buildOfficials = await loadResponsibleOfficialBuilder();
+  const officials = buildOfficials({
+    form: {
+      principalOperatingOfficer: "Builder Officer",
+      dataSecurityCoordinator: "Builder Coordinator",
+    },
+    snapshot: [
+      {
+        wispRole: "principal_operating_officer",
+        name: "Saved Officer",
+        email: "saved@example.test",
+      },
+    ],
+    staff: [
+      {
+        wisp_role: "principal_operating_officer",
+        full_name: "Staff Officer",
+        email: "staff-officer@example.test",
+      },
+      {
+        wisp_role: "data_security_coordinator",
+        full_name: "Staff Coordinator",
+        email: "staff-coordinator@example.test",
+      },
+    ],
+  });
+
+  assert.equal(officials[0].name, "Builder Officer");
+  assert.equal(officials[0].email, "saved@example.test");
+  assert.equal(officials[1].name, "Builder Coordinator");
+  assert.equal(officials[1].email, "staff-coordinator@example.test");
+});

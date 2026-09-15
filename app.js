@@ -1730,7 +1730,7 @@ function buildWispResponsibleOfficials({ snapshot = [], staff = [], form = {} } 
   return WISP_SIGNATORY_ROLES.map((definition) => {
     const saved = savedOfficials.find((official) => official?.wispRole === definition.wispRole || official?.role === definition.role);
     const member = activeStaff.find((staffMember) => staffMember?.wisp_role === definition.wispRole);
-    const name = String(saved?.name || member?.full_name || member?.name || form[definition.fallbackKey] || "").trim();
+    const name = String(form[definition.fallbackKey] || saved?.name || member?.full_name || member?.name || "").trim();
     if (!name) return null;
     return {
       name,
