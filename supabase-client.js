@@ -1032,9 +1032,25 @@ export async function saveWispSignature(signature = {}) {
   });
   if (error) throw error;
   const signatures = await fetchWispSignatures(project.id);
+  const signedRender = await queueWispSignedRender(project.id);
   if (wispProjectCache?.id === project.id)
     wispProjectCache = { ...wispProjectCache, signatures };
-  return { signature: data, signatures };
+  return { signature: data, signatures, signedRender };
+}
+
+export async function queueWispSignedRender(projectId) {
+  if (!hasClient()) throw new Error("Supabase is not configured in config.js.");
+  if (!projectId) throw new Error("A finalized WISP is required before updating its PDF.");
+  const generatedFiles = await fetchWispGeneratedFiles(projectId);
+  const versionId = generatedFiles.find((file) => file.versionId)?.versionId;
+  if (!versionId)
+    throw new Error("Generate the immutable WISP version before updating its PDF.");
+  const { data, error } = await supabase.rpc("queue_wisp_signed_render", {
+    p_version_id: versionId,
+    p_idempotency_key: crypto.randomUUID(),
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function finalizeWispBuild(filePayload, meta = {}) {

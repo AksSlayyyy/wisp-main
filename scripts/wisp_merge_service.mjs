@@ -109,6 +109,22 @@ async function downloadPrivateWispPdf(storagePath) {
   return Buffer.from(await response.arrayBuffer());
 }
 
+async function fetchVersionSignatures(versionId) {
+  const query = new URLSearchParams({
+    select: "signer_name,signer_role,signature_method,signature_data,signature_font,consented_at",
+    version_id: `eq.${versionId}`,
+    order: "consented_at.asc",
+  });
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/wisp_version_signatures?${query}`, {
+    headers: serviceRoleHeaders(),
+  });
+  if (!response.ok) throw new Error(`Could not retrieve WISP signatures (${response.status}).`);
+  const signatures = await response.json();
+  return Array.isArray(signatures)
+    ? signatures.map((signature) => ({ ...signature, signed_at: signature.consented_at }))
+    : [];
+}
+
 async function appendQueuedAttachments(pdfBuffer, attachments = []) {
   const attachmentRows = Array.isArray(attachments) ? attachments : [];
   const paths = attachmentRows
@@ -137,7 +153,8 @@ async function processOneGenerationJob() {
     if (!payload || typeof payload !== "object") throw new Error("Queued WISP has no render payload.");
     const officialPreview = await runOfficialPreview(payload);
     try {
-      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), []);
+      const signatures = await fetchVersionSignatures(job.version_id);
+      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures);
       const pdfBuffer = await appendQueuedAttachments(renderedPdf, payload?.attachments);
       if (!pdfBuffer) throw new Error("Chromium PDF renderer is unavailable.");
       const fileName = safeWorkerFileName(payload, job.version_id);

@@ -7,6 +7,7 @@ let saveRiskAssessmentDraft = async () => null;
 let saveWispDraft = async () => null;
 let finalizeWispBuild = async () => null;
 let queueWispGeneration = async () => null;
+let queueWispSignedRender = async () => null;
 let getWispGenerationStatus = async () => null;
 let activateWispProject = async () => null;
 let saveWispSignature = async () => {
@@ -2173,7 +2174,7 @@ async function bootstrapApp() {
       // Keep the dynamically imported backend client in lockstep with this
       // deployed app bundle. Cloudflare/browser caches previously served an
       // obsolete module after the shell itself had updated.
-      const supabaseModule = await import("./supabase-client.js?v=20260912-stage-04-immutable-cutover");
+      const supabaseModule = await import("./supabase-client.js?v=20260915-signed-wisp-pdf");
       console.log("[bootstrapApp] supabase import succeeded");
       supabaseBackendLoaded = true;
       deleteDocument = supabaseModule.deleteDocument || deleteDocument;
@@ -2181,6 +2182,8 @@ async function bootstrapApp() {
         supabaseModule.fetchBootstrapState || fetchBootstrapState;
       finalizeWispBuild = supabaseModule.finalizeWispBuild || finalizeWispBuild;
       queueWispGeneration = supabaseModule.queueWispGeneration || queueWispGeneration;
+      queueWispSignedRender =
+        supabaseModule.queueWispSignedRender || queueWispSignedRender;
       getWispGenerationStatus =
         supabaseModule.getWispGenerationStatus || getWispGenerationStatus;
       activateWispProject = supabaseModule.activateWispProject || activateWispProject;
@@ -6546,20 +6549,59 @@ async function saveCompletedWispSignature() {
     showToast("Add a signature before saving.", "error");
     return;
   }
-  const result = await saveWispSignature({
-    projectId: state.wispProject?.id,
-    signerName: dialog.name,
-    signerRole: dialog.role,
-    signerEmail: dialog.email,
-    signatureMethod: dialog.mode,
-    signatureData,
-    signatureFont: dialog.font,
-  });
-  const signatures = result.signatures || [];
-  state.wispProject = { ...state.wispProject, signatures };
-  state.wispSignatureDialog = null;
+  state.builderSigningPdfBusy = true;
+  try {
+    const result = await saveWispSignature({
+      projectId: state.wispProject?.id,
+      signerName: dialog.name,
+      signerRole: dialog.role,
+      signerEmail: dialog.email,
+      signatureMethod: dialog.mode,
+      signatureData,
+      signatureFont: dialog.font,
+    });
+    const signatures = result.signatures || [];
+    state.wispProject = { ...state.wispProject, signatures };
+    state.wispSignatureDialog = null;
+    render();
+    showToast("Signature recorded. Updating the signed PDF…", "info");
+    const generatedFile = await waitForSignedWispRender(
+      result.signedRender?.job_id,
+      state.wispProject?.id,
+    );
+    state.wispProject = { ...state.wispProject, latest_generated_file: generatedFile };
+    showToast("Signature recorded and the signed PDF is ready.", "success");
+  } finally {
+    state.builderSigningPdfBusy = false;
+    render();
+  }
+}
+async function waitForSignedWispRender(jobId, projectId) {
+  if (!jobId) throw new Error("The signed PDF render was not queued.");
+  const deadline = Date.now() + 150000;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const status = await getWispGenerationStatus(jobId, projectId);
+    if (status?.job?.status === "succeeded" && status.generatedFile)
+      return status.generatedFile;
+    if (status?.job?.status === "failed")
+      throw new Error(status.job.error_code || "The signed PDF could not be generated.");
+  }
+  throw new Error("The signed PDF is still rendering. Refresh this page in a moment.");
+}
+async function refreshSignedWispPdf() {
+  state.builderSigningPdfBusy = true;
   render();
-  showToast("Signature recorded against this immutable WISP version.", "success");
+  try {
+    const queued = await queueWispSignedRender(state.wispProject?.id);
+    showToast("Updating the signed PDF…", "info");
+    const generatedFile = await waitForSignedWispRender(queued?.job_id, state.wispProject?.id);
+    state.wispProject = { ...state.wispProject, latest_generated_file: generatedFile };
+    showToast("The signed PDF is ready.", "success");
+  } finally {
+    state.builderSigningPdfBusy = false;
+    render();
+  }
 }
 function acknowledgingSignerRequestScreen() {
   const sourceTab =
@@ -6826,7 +6868,7 @@ const implementationDate = wisp?.activated_at || wisp?.updated_at;
           .join("")
       : '<tr><td colspan="7" class="wisp-signatory-empty"><strong>No acknowledgement requests yet</strong><span>Add staff from Settings, then send them individual acknowledgement links.</span></td></tr>';
     const content = wisp
-      ? `      <section class="wisp-info-panel">        <h2>${viewLabel} WISP Info</h2>        <div class="wisp-info-layout">          <dl class="wisp-info-table">            <div><dt>Firm name</dt><dd>${escapeHtml(firmName)}</dd></div>            <div><dt>${isActiveView ? "Implementation date" : "Finalized date"}</dt><dd>${escapeHtml(finalizedDate)}</dd></div>            ${isActiveView ? `<div><dt>Expiration date</dt><dd>${escapeHtml(expirationDate)}</dd></div>` : ""}            <div><dt>Status</dt><dd>${viewLabel}</dd></div>            <div><dt>Attachments</dt><dd>${state.builderAttachments.length}</dd></div>          </dl>          <div class="wisp-info-actions">            <div class="wisp-info-document" aria-hidden="true"><div></div><span>WISP</span><i></i><i></i><i></i></div>            <button class="btn secondary" type="button" data-action="view-completed-wisp" ${state.builderSigningPdfBusy ? "disabled" : ""}>${state.builderSigningPdfBusy ? "Updating signed PDF..." : "View WISP"}</button>            ${file?.downloadUrl ? `<button class="wisp-info-download" type="button" data-action="download-current-wisp">Download PDF</button>` : ""}            <button class="wisp-info-delete" type="button" data-action="delete-completed-wisp">Delete ${isActiveView ? "active" : "completed"} WISP</button>          </div>        </div>        <section class="wisp-signatories">          <div class="wisp-signatories-head"><div><h2>Document Signatories</h2><p>Responsible officials assigned to this ${isActiveView ? "active" : "completed"} WISP.</p></div><span>Signature workflow: not requested</span></div>          <div class="wisp-signatories-table-wrap"><table class="wisp-signatories-table"><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>WISP status</th><th>Signed</th><th>Signature requested</th><th>Signed date</th><th>Action</th></tr></thead><tbody>${signatoryRows}</tbody></table></div>        </section>        ${activationCard}        ${isActiveView ? `<section class="wisp-signatories wisp-acknowledging-signers">          <div class="wisp-signatories-head"><div><h2>Acknowledging Signers</h2><p>Staff members from Settings who can be asked to acknowledge this ${isActiveView ? "active" : "completed"} WISP.</p></div><div class="wisp-acknowledging-head-actions"><span>${acknowledgingAvailability}</span><button class="wisp-send-request-button" type="button" data-action="open-acknowledging-requests">Send new signature request</button></div></div>          <div class="wisp-signatories-table-wrap"><table class="wisp-signatories-table wisp-acknowledging-signers-table"><thead><tr><th>Name</th><th>Email</th><th>Signed</th><th>Signature</th><th>Request date</th><th>Signed date</th><th>Action</th></tr></thead><tbody>${acknowledgingRows}</tbody></table></div>        </section>` : ""}        <p class="wisp-info-note">This WISP is ${isActiveView ? "active" : "complete"}. Delete it only when you are ready to remove it and start a new draft.</p>      </section>`
+      ? `      <section class="wisp-info-panel">        <h2>${viewLabel} WISP Info</h2>        <div class="wisp-info-layout">          <dl class="wisp-info-table">            <div><dt>Firm name</dt><dd>${escapeHtml(firmName)}</dd></div>            <div><dt>${isActiveView ? "Implementation date" : "Finalized date"}</dt><dd>${escapeHtml(finalizedDate)}</dd></div>            ${isActiveView ? `<div><dt>Expiration date</dt><dd>${escapeHtml(expirationDate)}</dd></div>` : ""}            <div><dt>Status</dt><dd>${viewLabel}</dd></div>            <div><dt>Attachments</dt><dd>${state.builderAttachments.length}</dd></div>          </dl>          <div class="wisp-info-actions">            <div class="wisp-info-document" aria-hidden="true"><div></div><span>WISP</span><i></i><i></i><i></i></div>            <button class="btn secondary" type="button" data-action="view-completed-wisp" ${state.builderSigningPdfBusy ? "disabled" : ""}>${state.builderSigningPdfBusy ? "Updating signed PDF..." : "View WISP"}</button>            ${file?.downloadUrl ? `<button class="wisp-info-download" type="button" data-action="download-current-wisp">Download PDF</button>` : ""}            ${(state.wispProject?.signatures || []).length ? `<button class="wisp-info-download" type="button" data-action="refresh-signed-wisp-pdf" ${state.builderSigningPdfBusy ? "disabled" : ""}>${state.builderSigningPdfBusy ? "Updating signed PDF..." : "Update signed PDF"}</button>` : ""}            <button class="wisp-info-delete" type="button" data-action="delete-completed-wisp">Delete ${isActiveView ? "active" : "completed"} WISP</button>          </div>        </div>        <section class="wisp-signatories">          <div class="wisp-signatories-head"><div><h2>Document Signatories</h2><p>Responsible officials assigned to this ${isActiveView ? "active" : "completed"} WISP.</p></div><span>Signature workflow: not requested</span></div>          <div class="wisp-signatories-table-wrap"><table class="wisp-signatories-table"><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>WISP status</th><th>Signed</th><th>Signature requested</th><th>Signed date</th><th>Action</th></tr></thead><tbody>${signatoryRows}</tbody></table></div>        </section>        ${activationCard}        ${isActiveView ? `<section class="wisp-signatories wisp-acknowledging-signers">          <div class="wisp-signatories-head"><div><h2>Acknowledging Signers</h2><p>Staff members from Settings who can be asked to acknowledge this ${isActiveView ? "active" : "completed"} WISP.</p></div><div class="wisp-acknowledging-head-actions"><span>${acknowledgingAvailability}</span><button class="wisp-send-request-button" type="button" data-action="open-acknowledging-requests">Send new signature request</button></div></div>          <div class="wisp-signatories-table-wrap"><table class="wisp-signatories-table wisp-acknowledging-signers-table"><thead><tr><th>Name</th><th>Email</th><th>Signed</th><th>Signature</th><th>Request date</th><th>Signed date</th><th>Action</th></tr></thead><tbody>${acknowledgingRows}</tbody></table></div>        </section>` : ""}        <p class="wisp-info-note">This WISP is ${isActiveView ? "active" : "complete"}. Delete it only when you are ready to remove it and start a new draft.</p>      </section>`
       : builderStatusPanel({
           eyebrow: `No ${viewLabel.toLowerCase()} WISP`,
           title: `No ${viewLabel.toLowerCase()} WISP yet`,
@@ -9950,6 +9992,11 @@ function handleAction(action, trigger = null) {
       showToast("Unable to open the completed WISP preview.", "error");
     });
   }
+  if (action === "refresh-signed-wisp-pdf")
+    refreshSignedWispPdf().catch((error) => {
+      console.error("Signed WISP PDF refresh failed", error);
+      showToast(error.message || "Unable to update the signed PDF.", "error");
+    });
   if (action === "sign-completed-wisp") openWispSignatureDialog(trigger);
   if (action === "close-wisp-signature") {
     state.wispSignatureDialog = null;
