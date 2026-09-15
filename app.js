@@ -2174,7 +2174,7 @@ async function bootstrapApp() {
       // Keep the dynamically imported backend client in lockstep with this
       // deployed app bundle. Cloudflare/browser caches previously served an
       // obsolete module after the shell itself had updated.
-      const supabaseModule = await import("./supabase-client.js?v=20260915-signed-wisp-pdf");
+      const supabaseModule = await import("./supabase-client.js?v=20260915-assigned-signer-name");
       console.log("[bootstrapApp] supabase import succeeded");
       supabaseBackendLoaded = true;
       deleteDocument = supabaseModule.deleteDocument || deleteDocument;
