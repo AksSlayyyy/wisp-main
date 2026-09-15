@@ -14,6 +14,7 @@ test("a WISP signature queues a server-side signed PDF render", async () => {
   assert.match(client, /rpc\("queue_wisp_signed_render"/);
   assert.match(app, /waitForSignedWispRender/);
   assert.match(renderer, /fetchVersionSignatures\(job\.version_id\)/);
+  assert.match(renderer, /-signed-\$\{String\(jobId\)\.slice\(0, 8\)\}/);
   assert.match(migration, /create or replace function public\.queue_wisp_signed_render/);
   assert.match(migration, /and state = 'queued'/);
 });

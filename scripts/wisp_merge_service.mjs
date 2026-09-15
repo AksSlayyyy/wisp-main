@@ -140,9 +140,10 @@ async function appendQueuedAttachments(pdfBuffer, attachments = []) {
   return Buffer.from(await combined.save());
 }
 
-function safeWorkerFileName(payload, versionId) {
+function safeWorkerFileName(payload, versionId, jobId, signatures = []) {
   const firmName = String(payload?.mergeFields?.companyName || payload?.firm?.companyName || "wisp");
-  return `${sanitizeSlug(firmName)}-wisp-${String(versionId).slice(0, 8)}.pdf`;
+  const signedSuffix = signatures.length ? `-signed-${String(jobId).slice(0, 8)}` : "";
+  return `${sanitizeSlug(firmName)}-wisp-${String(versionId).slice(0, 8)}${signedSuffix}.pdf`;
 }
 
 async function processOneGenerationJob() {
@@ -157,7 +158,7 @@ async function processOneGenerationJob() {
       const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures);
       const pdfBuffer = await appendQueuedAttachments(renderedPdf, payload?.attachments);
       if (!pdfBuffer) throw new Error("Chromium PDF renderer is unavailable.");
-      const fileName = safeWorkerFileName(payload, job.version_id);
+      const fileName = safeWorkerFileName(payload, job.version_id, job.job_id, signatures);
       const storagePath = `${job.firm_id}/wisp/${job.version_id}/${fileName}`;
       const contentHash = createHash("sha256").update(pdfBuffer).digest("hex");
       await uploadGeneratedPdf(storagePath, pdfBuffer);
