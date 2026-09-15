@@ -559,13 +559,13 @@ function buildDownloadPreviewHtml(preview, signatures = []) {
     if (!sections.length) return "";
     const saved = Array.isArray(signatures) ? signatures : [];
     const items = sections.map((block) => {
-      const name = escapeHtml(block?.name || "");
       const titleText = String(block?.title || "");
       const title = escapeHtml(titleText);
       const signature = saved.find((entry) => {
         const role = String(entry?.signer_role || "");
         return role === titleText || (role === "Principal Operating Officer" && titleText.includes("Principal Operating Officer"));
       });
+      const name = escapeHtml(signature?.signer_name || block?.name || "");
       let mark = "";
       if (signature?.signature_method === "draw" && String(signature.signature_data || "").startsWith("data:image/")) {
         mark = `<img class="export-signature-image" src="${escapeHtml(signature.signature_data)}" alt="Signed by ${name}" />`;
