@@ -1014,8 +1014,9 @@ export async function saveWispSignature(signature = {}) {
   if (!project?.id)
     throw new Error("A finalized WISP is required before signing.");
   const signerRole = String(signature.signerRole || "").trim();
+  const signerName = String(signature.signerName || "").trim();
   const signatureData = String(signature.signatureData || "");
-  if (!signerRole || !signatureData)
+  if (!signerRole || !signerName || !signatureData)
     throw new Error("Complete the signature before saving.");
   const generatedFiles = await fetchWispGeneratedFiles(project.id);
   const versionId = generatedFiles.find((file) => file.versionId)?.versionId;
@@ -1024,6 +1025,7 @@ export async function saveWispSignature(signature = {}) {
   const { data, error } = await supabase.rpc("sign_wisp_version", {
     p_version_id: versionId,
     p_signer_role: signerRole,
+    p_signer_name: signerName,
     p_signature_method: signature.signatureMethod === "type" ? "type" : "draw",
     p_signature_data: signatureData,
     p_signature_font: signature.signatureFont || null,
