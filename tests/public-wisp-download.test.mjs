@@ -12,5 +12,6 @@ test("secure acknowledgement downloads resolve the current WISP PDF", async () =
   assert.match(source, /eq\("project_id", acknowledgement\.project_id\)/);
   assert.match(source, /order\("created_at", \{ ascending: false \}\)/);
   assert.match(source, /currentFile\?\.storage_path/);
+  assert.match(source, /x-client-info/);
   assert.match(migration, /'project_id', v_request\.project_id/);
 });
