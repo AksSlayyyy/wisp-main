@@ -11277,51 +11277,50 @@ input.retention-year-blank {
 
 
 /* Signing layout: scoped to avoid changing dashboard and completion screens. */
-.public-ack-signing.public-ack-page { background: #f4f7f6; }
-.public-ack-signing .public-ack-topbar { height: 84px; padding-inline: max(24px, calc((100vw - 1440px) / 2)); }
+.public-ack-signing.public-ack-page { background: #f7f8fa; color: #222b35; }
+.public-ack-signing .public-ack-topbar { height: 76px; padding-inline: max(24px, calc((100vw - 1440px) / 2)); border-bottom-color: #e0e3e7; }
 .public-ack-signing .public-ack-brand { display: flex; align-items: center; }
-.public-ack-private { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid #dce8e2; border-radius: 100px; color: #446458; background: #f6faf8; font-size: 12px; }
+.public-ack-private { display: inline-flex; align-items: center; gap: 8px; color: #646d77; font-size: 12px; }
 .public-ack-private svg { width: 16px; height: 16px; }
-.public-ack-signing .public-ack-shell { max-width: 1488px; padding: 48px 24px 72px; box-sizing: border-box; }
-.public-ack-signing .public-ack-heading { max-width: none; display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-bottom: 36px; }
-.public-ack-signing .public-ack-heading h1 { font-size: clamp(32px, 3.5vw, 50px); line-height: 1.12; letter-spacing: -.045em; margin: 12px 0 16px; }
-.public-ack-signing .public-ack-heading h1 span { color: #078060; }
-.public-ack-heading > div > p:last-child { color: #61756f; font-size: 15px; line-height: 1.6; margin-bottom: 0; }
-.public-ack-link-details { flex-shrink: 0; display: grid; gap: 8px; border-left: 2px solid #bbd8ca; padding: 8px 0 8px 24px; max-width: 300px; overflow-wrap: anywhere; }
-.public-ack-link-details span { font-size: 12px; color: #63766f; }
-.public-ack-link-details strong { color: #193d31; font-size: 19px; }
+.public-ack-signing .public-ack-shell { max-width: 1488px; padding: 36px 24px 64px; box-sizing: border-box; }
+.public-ack-signing .public-ack-heading { max-width: none; display: flex; justify-content: space-between; align-items: center; gap: 32px; margin-bottom: 28px; }
+.public-ack-signing .public-ack-heading h1 { font-size: clamp(26px, 2.5vw, 32px); font-weight: 600; color: #202a35; line-height: 1.25; letter-spacing: -.025em; margin: 0 0 10px; }
+.public-ack-heading > div > p:last-child { color: #64707c; font-size: 14px; line-height: 1.6; margin-bottom: 0; }
+.public-ack-link-details { flex-shrink: 0; display: grid; gap: 5px; padding: 0; max-width: 300px; text-align: right; overflow-wrap: anywhere; }
+.public-ack-link-details span { font-size: 12px; color: #66717d; }
+.public-ack-link-details strong { color: #303b46; font-weight: 600; font-size: 14px; }
 .public-ack-signing .public-ack-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 28px; }
-.public-ack-signing .public-ack-card { grid-column: 2; grid-row: 1; padding: 28px; border-radius: 18px; border-color: #dce5df; box-shadow: 0 8px 30px #173d2910; }
-.public-ack-signing .public-ack-preview { grid-column: 1; grid-row: 1; position: sticky; top: 20px; border-radius: 18px; border-color: #d3dfd9; box-shadow: 0 12px 32px #173d2912; }
-.public-ack-section-label { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #467060; }
-.public-ack-section-label > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #e6f2eb; color: #077456; letter-spacing: 0; }
-.public-ack-recipient { display: flex; align-items: center; gap: 14px; margin: 23px 0; overflow-wrap: anywhere; }
-.public-ack-avatar { display: grid; place-items: center; flex: 0 0 48px; height: 48px; background: #153e32; color: #fff; border-radius: 50%; font-size: 17px; font-weight: 700; text-transform: uppercase; }
-.public-ack-signing .public-ack-card h2 { font-size: 21px; }
+.public-ack-signing .public-ack-card { grid-column: 2; grid-row: 1; padding: 28px; border-radius: 6px; border-color: #dce0e5; box-shadow: none; }
+.public-ack-signing .public-ack-preview { grid-column: 1; grid-row: 1; position: sticky; top: 20px; border-radius: 6px; border-color: #dce0e5; box-shadow: none; }
+.public-ack-section-label { font-size: 14px; font-weight: 600; letter-spacing: 0; color: #273440; }
+.public-ack-recipient { display: flex; align-items: center; margin: 22px 0; overflow-wrap: anywhere; }
+.public-ack-signing .public-ack-card h2 { font-size: 16px; font-weight: 600; color: #273440; letter-spacing: 0; }
 .public-ack-signing .public-ack-role { margin: 5px 0 0; font-size: 13px; }
-.public-ack-signing .public-ack-copy { font-size: 14px; line-height: 1.8; border-color: #e2eae5; padding: 22px 0; }
-.public-ack-signing .public-ack-signature { border-color: #cddfd5; background: #fbfdfb; }
-.public-ack-signing .public-ack-signature-head { background: #edf5f0; color: #234e3d; padding: 15px 16px; }
+.public-ack-signing .public-ack-copy { font-size: 14px; line-height: 1.75; color: #475463; border-color: #e3e6ea; padding: 22px 0; }
+.public-ack-signing .public-ack-copy strong { color: #273440; font-weight: 600; }
+.public-ack-signing .public-ack-signature { border-color: #d5dce3; background: #fff; border-radius: 6px; }
+.public-ack-signing .public-ack-signature-head { background: #f6f7f9; color: #303b46; padding: 15px 16px; font-weight: 600; }
 .public-ack-signing .public-ack-tabs { gap: 6px; }
-.public-ack-signing .public-ack-tabs button { flex: 1; min-height: 42px; font-size: 12px; }
+.public-ack-signing .public-ack-tabs button { flex: 1; min-height: 40px; font-size: 12px; border-radius: 4px; font-weight: 600; }
+.public-ack-signing .public-ack-tabs button.is-active { background: #edf1f4; border-color: #aebbc6; color: #253644; }
 .public-ack-signing .public-ack-canvas { height: 165px; background: #fff; border-radius: 6px 6px 0 0; }
-.public-ack-signing .public-ack-submit { display: flex; justify-content: center; align-items: center; gap: 18px; min-height: 52px; font-size: 14px; background: #087b59; box-shadow: 0 6px 15px #087b591a; }
+.public-ack-signing .public-ack-submit { display: flex; justify-content: center; align-items: center; min-height: 48px; font-size: 14px; font-weight: 600; border-radius: 5px; background: #087b59; box-shadow: none; }
 .public-ack-submit:not(:disabled):hover { background: #065e44; }
 .public-ack-submit-note { font-size: 11px; color: #6a7e74; text-align: center; line-height: 1.6; margin: 12px 0 0; }
 .public-ack-signing .public-ack-preview-head { padding: 21px 24px; gap: 16px; }
 .public-ack-signing .public-ack-preview-head > div { min-width: 0; }
-.public-ack-signing .public-ack-preview-head strong { display: block; max-width: none; margin: 10px 0 0 36px; overflow-wrap: anywhere; white-space: normal; font-size: 15px; }
-.public-ack-open-pdf { flex-shrink: 0; padding: 9px 12px; border: 1px solid #d2e0d7; border-radius: 8px; color: #126b4e; text-decoration: none; font-size: 12px; }
+.public-ack-signing .public-ack-preview-head strong { display: block; max-width: none; margin: 6px 0 0; overflow-wrap: anywhere; white-space: normal; font-size: 12px; font-weight: 400; color: #63707c; }
+.public-ack-open-pdf { flex-shrink: 0; padding: 9px 12px; border: 1px solid #d6dce2; border-radius: 4px; color: #354653; text-decoration: none; font-size: 12px; font-weight: 500; }
 .public-ack-open-pdf:hover { background: #edf5ef; }
 .public-ack-file-label { border: 1px solid #dce5df; padding: 7px 10px; border-radius: 6px; font-size: 11px; }
-.public-ack-signing .public-ack-pdf-frame { min-height: 650px; padding: 16px; background: #e3ebe7; }
+.public-ack-signing .public-ack-pdf-frame { min-height: 650px; padding: 16px; background: #e9ecf0; }
 .public-ack-signing .public-ack-pdf-object { min-height: 650px; height: 72vh; border: 1px solid #cbd7d0; box-shadow: 0 4px 12px #183e2914; }
 .public-ack-signing .public-ack-preview-loading { min-height: 650px; background: #eef3f0; }
 .public-ack-preview-foot { display: flex; justify-content: space-between; gap: 12px; padding: 14px 22px; color: #6c7e75; font-size: 11px; background: #fff; border-top: 1px solid #dce5df; }
 .public-ack-signing :is(button, a, input):focus-visible { outline: 3px solid #28a47a; outline-offset: 3px; }
 @media (max-width: 900px) {
   .public-ack-signing .public-ack-heading { align-items: flex-start; flex-direction: column; gap: 22px; }
-  .public-ack-link-details { max-width: none; }
+  .public-ack-link-details { max-width: none; text-align: left; }
   .public-ack-signing .public-ack-grid { grid-template-columns: minmax(0, 1fr); }
   .public-ack-signing .public-ack-preview { grid-column: 1; grid-row: 1; position: static; }
   .public-ack-signing .public-ack-card { grid-column: 1; grid-row: 2; }

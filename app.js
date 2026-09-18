@@ -10770,24 +10770,23 @@ function renderPublicAcknowledgement() {
               `<button type="button" data-public-ack-font="${font}" class="${model.font === font ? "is-active" : ""}" style="font-family:${attr(PUBLIC_ACK_SIGNATURE_FONTS[font])}">${escapeHtml(font)}</button>`,
           )
           .join("")}</div>`;
-  const recipientInitials = (request.recipient_name || "You").trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("");
   const pdfPreview = model.previewPdfUrl
     ? `<div class="public-ack-pdf-frame"><iframe class="builder-review-pdf-object public-ack-pdf-object" src="${attr(model.previewPdfUrl)}#view=FitH&toolbar=0&navpanes=0" type="application/pdf" aria-label="WISP PDF preview"></iframe></div>`
     : `<div class="public-ack-preview-loading">${escapeHtml(model.previewPdfError || "Preparing the WISP PDF preview...")}</div>`;
   document.body.innerHTML = `<main class="public-ack-page public-ack-signing">
     <header class="public-ack-topbar"><div class="public-ack-brand"><span>EasyWISP</span></div><span class="public-ack-private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg>Private signing link</span></header>
     <div class="public-ack-shell">
-      <div class="public-ack-heading"><div><p class="public-ack-kicker">Your firm's information security plan</p><h1>Review. Sign.<br><span>You're part of the plan.</span></h1><p>Read your WISP, review the acknowledgement, and add your signature below.</p></div><div class="public-ack-link-details"><span>Prepared for</span><strong>${escapeHtml(request.recipient_name || "you")}</strong><span>Link expires ${escapeHtml(formatDashboardDate(request.expires_at))}</span></div></div>
+      <div class="public-ack-heading"><div><h1>WISP acknowledgement</h1><p>Review the document and sign your acknowledgement below.</p></div><div class="public-ack-link-details"><span>Prepared for</span><strong>${escapeHtml(request.recipient_name || "you")}</strong><span>Link expires ${escapeHtml(formatDashboardDate(request.expires_at))}</span></div></div>
       <div class="public-ack-grid">
         <section class="public-ack-card" aria-label="Review and sign your acknowledgement">
-          <div class="public-ack-section-label"><span>02</span> Your acknowledgement</div>
-          <div class="public-ack-recipient"><span class="public-ack-avatar" aria-hidden="true">${escapeHtml(recipientInitials)}</span><div><h2>${escapeHtml(request.recipient_name || "Staff acknowledgement")}</h2><p class="public-ack-role">${escapeHtml(request.recipient_role || "Staff member")}</p></div></div>
+          <div class="public-ack-section-label">Acknowledgement</div>
+          <div class="public-ack-recipient"><div><h2>${escapeHtml(request.recipient_name || "Staff acknowledgement")}</h2><p class="public-ack-role">${escapeHtml(request.recipient_role || "Staff member")}</p></div></div>
           <div class="public-ack-copy">${publicAcknowledgementMessage(request, snapshot)}</div>
           <div class="public-ack-signature"><div class="public-ack-signature-head"><span>Add your signature</span><button type="button" data-public-ack-clear>Clear</button></div><div class="public-ack-tabs" role="group" aria-label="Signature method"><button type="button" data-public-ack-mode="draw" aria-pressed="${model.mode === "draw"}" class="${model.mode === "draw" ? "is-active" : ""}">Draw signature</button><button type="button" data-public-ack-mode="type" aria-pressed="${model.mode === "type"}" class="${model.mode === "type" ? "is-active" : ""}">Type signature</button></div><div class="public-ack-editor">${signatureEditor}</div></div>
           ${model.error ? `<p class="public-ack-error" role="alert">${escapeHtml(model.error)}</p>` : ""}
-          <button class="public-ack-submit" type="button" data-public-ack-submit ${model.saving ? "disabled" : ""}>${model.saving ? "Saving acknowledgement..." : "I understand and acknowledge <span aria-hidden=\"true\">&#8594;</span>"}</button><p class="public-ack-submit-note">Your signature records your acknowledgement of this WISP.</p>
+          <button class="public-ack-submit" type="button" data-public-ack-submit ${model.saving ? "disabled" : ""}>${model.saving ? "Saving acknowledgement..." : "Sign acknowledgement"}</button><p class="public-ack-submit-note">Your signature records your acknowledgement of this WISP.</p>
         </section>
-        <aside class="public-ack-preview" aria-label="WISP document"><div class="public-ack-preview-head"><div><div class="public-ack-section-label"><span>01</span> Review your document</div><strong>${escapeHtml(snapshot.firmName || "Your firm")}</strong></div>${model.previewPdfUrl ? `<a class="public-ack-open-pdf" href="${attr(model.previewPdfUrl)}" target="_blank" rel="noopener noreferrer">Open PDF <span aria-hidden="true">&#8599;</span><span class="sr-only"> (new tab)</span></a>` : `<span class="public-ack-file-label">PDF</span>`}</div>${pdfPreview}<div class="public-ack-preview-foot">Written Information Security Plan <span>Review before signing</span></div></aside>
+        <aside class="public-ack-preview" aria-label="WISP document"><div class="public-ack-preview-head"><div><div class="public-ack-section-label">Written Information Security Plan</div><strong>${escapeHtml(snapshot.firmName || "Your firm")}</strong></div>${model.previewPdfUrl ? `<a class="public-ack-open-pdf" href="${attr(model.previewPdfUrl)}" target="_blank" rel="noopener noreferrer">Open PDF <span aria-hidden="true">&#8599;</span><span class="sr-only"> (new tab)</span></a>` : `<span class="public-ack-file-label">PDF</span>`}</div>${pdfPreview}<div class="public-ack-preview-foot">Written Information Security Plan <span>Review before signing</span></div></aside>
       </div>
     </div></main>`;
   document.querySelectorAll("[data-public-ack-mode]").forEach((button) =>
