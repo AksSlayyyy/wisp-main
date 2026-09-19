@@ -2443,6 +2443,57 @@ button {
   .readiness-panel, .readiness-overview { break-inside: avoid; }
   .readiness-report { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+/* Executive assessment report: evidence, priorities, then supporting charts. */
+.readiness-report-executive { gap: 20px; }
+.readiness-report-executive .readiness-coverage { order: -3; }
+.readiness-report-executive .readiness-overview { order: -2; }
+.readiness-report-executive .readiness-priority-panel { order: -1; }
+.readiness-coverage { display: flex; align-items: center; gap: 24px; padding: 18px 22px; background: #fff; border: 1px solid #dce2e8; border-radius: 6px; }
+.readiness-coverage > div:first-child { display: grid; gap: 5px; }
+.readiness-coverage strong { font-size: 15px; color: #263542; }
+.readiness-coverage span { font-size: 12px; color: #627080; }
+.readiness-coverage-track { height: 6px; background: #e8edf1; flex: 1; min-width: 80px; overflow: hidden; border-radius: 2px; }
+.readiness-coverage-track > span { display: block; height: 100%; background: #536b7d; }
+.readiness-report-executive .readiness-overview { grid-template-columns: 180px minmax(0, 1fr); gap: 32px; padding: 28px; background: #fff; border-radius: 6px; border-top-width: 3px; }
+.readiness-report-executive .readiness-gauge { width: 136px; height: 136px; }
+.readiness-report-executive .readiness-gauge strong { font-size: 42px; }
+.readiness-report-executive .readiness-gauge-block > strong { font-size: 13px; }
+.readiness-report-executive .readiness-caption { font-size: 11px; line-height: 1.6; max-width: 180px; }
+.readiness-report-executive .readiness-overview-copy h2 { font-size: clamp(23px, 2.2vw, 30px); letter-spacing: -.025em; max-width: none; margin: 6px 0 10px; }
+.readiness-report-executive .readiness-overview-copy > p { font-size: 13px; max-width: 820px; }
+.readiness-report-executive .readiness-headline-metrics { margin-top: 16px; padding-top: 16px; }
+.readiness-report-executive .readiness-headline-metrics strong { font-size: 26px; }
+.readiness-report-executive .readiness-act-now { border-radius: 0; padding: 10px 12px; }
+.readiness-report-executive .readiness-panel { border-radius: 6px; padding: 24px; }
+.readiness-report-executive .readiness-panel-head h2 { font-size: 20px; font-weight: 650; }
+.readiness-report-executive .readiness-panel-head .eyebrow { font-size: 10px; }
+.readiness-report-executive .readiness-priority-panel > .readiness-actions { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
+.readiness-report-executive .readiness-priority-panel > .readiness-actions > :only-child { grid-column: 1 / -1; }
+.readiness-report-executive .readiness-action { border-radius: 5px; }
+.readiness-report-executive .readiness-action > summary { padding: 16px; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+.readiness-report-executive .readiness-action-title { flex-basis: calc(100% - 40px); }
+.readiness-report-executive .readiness-action-title strong { line-height: 1.5; }
+.readiness-report-executive .readiness-action-number { font-variant-numeric: tabular-nums; color: #47596a; padding-top: 2px; }
+.readiness-report-executive .readiness-expand { margin-left: auto; }
+.readiness-report-executive .readiness-action-body { padding: 0 16px 18px; font-size: 12px; }
+.readiness-report-executive .readiness-action-body > p { margin: 15px 0; }
+.readiness-answer-evidence { padding: 12px; background: #f4f6f8; border-left: 2px solid #8d9ba9; }
+.readiness-control-map { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; margin: 22px 0; }
+.readiness-control-map > span { aspect-ratio: 1; border-radius: 3px; background: var(--chart-color); }
+.readiness-control-map > .unknown { background: repeating-linear-gradient(135deg, #edf0f3, #edf0f3 4px, #e0e5ea 4px, #e0e5ea 6px); border: 1px solid #d0d8df; }
+.readiness-report-executive .readiness-bar { height: 12px; border-radius: 2px; }
+.readiness-report-executive .readiness-bar.unknown { background: repeating-linear-gradient(135deg, #edf0f3, #edf0f3 4px, #e0e5ea 4px, #e0e5ea 6px); }
+.readiness-report-executive .readiness-domain-row { padding-bottom: 14px; border-bottom: 1px solid #edf0f3; }
+.readiness-report-executive .readiness-explainer { border-radius: 4px; }
+@media (max-width: 1150px) {
+  .readiness-report-executive .readiness-priority-panel > .readiness-actions { grid-template-columns: 1fr; }
+}
+@media (max-width: 650px) {
+  .readiness-coverage { flex-wrap: wrap; gap: 14px; padding: 16px; }
+  .readiness-coverage-track { flex-basis: 100%; order: 2; }
+  .readiness-report-executive .readiness-overview { grid-template-columns: 1fr; padding: 20px; gap: 22px; }
+  .readiness-report-executive .readiness-panel { padding: 18px; }
+}
 .results-readiness-card {
   overflow: hidden;
 }
