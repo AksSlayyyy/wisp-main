@@ -7505,9 +7505,16 @@ function visualReadinessReport() {
     { count: missing, label: "Unanswered", tone: "unknown" },
   ];
   const scoreLabel = score === null ? "Readiness not assessed" : `${missing ? "Provisional readiness" : "Readiness"}: ${score} out of 100`;
+  let segmentOffset = 0;
+  const donutSegments = segments.filter(item => item.count).map(item => {
+    const length = answers.length ? item.count / answers.length * 100 : 0;
+    const circle = `<circle class="${item.tone}" cx="100" cy="100" r="78" pathLength="100" stroke-dasharray="${length} ${100 - length}" stroke-dashoffset="${-segmentOffset}" />`;
+    segmentOffset += length;
+    return circle;
+  }).join("");
   return `
-    <div class="rr-report">
-      <header class="rr-header"><div><div class="rr-breadcrumb">Risk assessment <span>/</span> Report</div><h1>Security readiness</h1><p>${escapeHtml(state.form.companyName || "Your firm")}</p></div><div class="rr-header-actions"><button class="btn secondary small" data-action="review" type="button">Edit assessment</button><button class="btn primary small" data-action="nav-builder-home" type="button">Open WISP Builder</button></div></header>
+    <div class="rr-report rr-workspace">
+      <header class="rr-header screen-head"><div><p class="eyebrow">Risk assessment</p><h1>WISP readiness report</h1><p>${escapeHtml(state.form.companyName || "Your firm")} · Your safeguards, priorities, and next steps.</p></div><div class="rr-header-actions"><button class="btn secondary" data-action="review" type="button">Edit assessment</button><button class="btn primary" data-action="nav-builder-home" type="button">Continue to WISP Builder</button></div></header>
       <section class="rr-metrics" aria-label="Assessment summary">
         <div class="rr-metric"><span>${missing ? "Provisional readiness" : "Readiness score"}</span><div class="rr-metric-value" aria-label="${scoreLabel}"><strong>${score ?? "—"}</strong><small>/ 100</small><svg class="rr-mini-ring ${tone}" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17"/><circle cx="22" cy="22" r="17" pathLength="100" stroke-dasharray="${score ?? 0} 100"/></svg></div><p>Based on reported safeguards</p></div>
         <div class="rr-metric"><span>Priority findings</span><div class="rr-metric-value"><strong>${findings.length}</strong><span>gaps identified</span></div><p class="${counts[0] ? "rr-alert-text" : ""}">${counts[0] ? `${counts[0]} require immediate attention` : "No immediate findings"}</p></div>
@@ -7515,6 +7522,14 @@ function visualReadinessReport() {
         <div class="rr-metric"><span>Assessment coverage</span><div class="rr-metric-value"><strong>${coverage}<small>%</small></strong></div><div class="rr-coverage-bar" aria-hidden="true"><i style="width:${coverage}%"></i></div><p>${answered.length} of ${answers.length} questions answered</p></div>
       </section>
       ${missing ? `<div class="rr-notice"><span><strong>Assessment incomplete.</strong> ${missing} unanswered question${missing === 1 ? " is" : "s are"} excluded from this score.</span><button type="button" data-action="review">Complete assessment <span aria-hidden="true">→</span></button></div>` : ""}
+      <div class="rr-visuals">
+        <section class="rr-panel rr-distribution"><div class="rr-section-head"><div><h2>Your safeguards at a glance</h2><p>Known gaps and assessment coverage</p></div></div><div class="rr-donut-layout"><div class="rr-donut" role="img" aria-label="${segments.map(item => `${item.count} ${item.label.toLowerCase()}`).join(', ')}"><svg viewBox="0 0 200 200" aria-hidden="true"><circle class="unknown" cx="100" cy="100" r="78"/>${donutSegments}</svg><div><strong>${findings.length}</strong><span>gaps identified</span></div></div><div class="rr-donut-legend">${segments.map(item => `<div><i class="${item.tone}" aria-hidden="true"></i><span>${item.label}</span><strong>${item.count}</strong></div>`).join("")}</div></div><div class="rr-visual-caption">${counts[0] ? `${counts[0]} immediate ${counts[0] === 1 ? "priority requires" : "priorities require"} follow-through.` : findings.length ? "Review the findings below to plan improvements." : "No immediate gaps flagged in the answers provided."}</div></section>
+        <section class="rr-panel rr-question-panel"><div class="rr-section-head"><div><h2>Every question, in view</h2><p>Select a question to review or update your answer.</p></div><span class="section-step-pill">${answered.length} / ${answers.length}</span></div><div class="rr-question-grid">${answers.map(item => {
+          const status = item.score === null ? "Unanswered" : item.score <= 25 ? "Immediate" : item.score <= 55 ? "30 days" : item.score <= 75 ? "90 days" : "No gap flagged";
+          const questionTone = item.score === null ? "unknown" : item.score <= 25 ? "urgent" : item.score <= 55 ? "attention" : item.score <= 75 ? "planned" : "healthy";
+          return `<button class="rr-question ${questionTone}" type="button" data-edit-section="${item.index + 1}" title="${escapeHtml(item.question.question)} — ${status}" aria-label="Question ${item.index + 1}: ${escapeHtml(item.question.question)}. ${status}. Review answer.">${String(item.index + 1).padStart(2, "0")}</button>`;
+        }).join("")}</div><div class="rr-question-key"><span><i class="urgent"></i>Immediate</span><span><i class="attention"></i>30 days</span><span><i class="planned"></i>90 days</span><span><i class="healthy"></i>No gap</span><span><i class="unknown"></i>Unanswered</span></div><div class="rr-visual-caption">${missing ? `${missing} unanswered questions remain. Unanswered does not mean protected.` : "All questions answered. Review individual answers whenever your safeguards change."}</div></section>
+      </div>
       <div class="rr-analysis">
         <section class="rr-panel rr-domains"><div class="rr-section-head"><div><h2>Readiness by security area</h2><p>Lowest assessed scores first</p></div><span class="rr-unit">Score / 100</span></div>
           <div class="rr-domain-list">${groups.map(group => `<div class="rr-domain"><div class="rr-domain-name"><strong>${escapeHtml(group.domain)}</strong><span>${group.answered} / ${group.total} answered</span></div><div class="rr-domain-track ${group.score === null ? "unknown" : group.score < 55 ? "urgent" : group.score < 75 ? "attention" : "healthy"}" aria-hidden="true">${group.score === null ? "" : `<i style="width:${group.score}%"></i><b style="left:${group.score}%"></b>`}</div><span class="rr-domain-score">${group.score === null ? "—" : group.score}</span></div>`).join("")}</div>
