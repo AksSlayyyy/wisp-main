@@ -109,6 +109,39 @@ async function downloadPrivateWispPdf(storagePath) {
   return Buffer.from(await response.arrayBuffer());
 }
 
+async function fetchFirmCoverLogo(firmId, authorization = "") {
+  if (!SUPABASE_URL || !firmId) return "";
+  const useCaller = Boolean(authorization);
+  if (useCaller ? !SUPABASE_ANON_KEY : !SUPABASE_SERVICE_ROLE_KEY) return "";
+  const headers = useCaller
+    ? { apikey: SUPABASE_ANON_KEY, Authorization: authorization }
+    : serviceRoleHeaders();
+  const query = new URLSearchParams({ select: "logo_path", firm_id: `eq.${firmId}`, limit: "1" });
+  const settingsResponse = await fetch(useCaller
+    ? `${SUPABASE_URL}/rest/v1/rpc/get_my_firm_app_settings`
+    : `${SUPABASE_URL}/rest/v1/app_settings?${query}`, {
+    method: useCaller ? "POST" : "GET",
+    headers: useCaller ? { ...headers, "Content-Type": "application/json" } : headers,
+    ...(useCaller ? { body: JSON.stringify({ p_firm_id: firmId }) } : {}),
+  });
+  if (!settingsResponse.ok) throw new Error(`Could not retrieve firm logo settings (${settingsResponse.status}).`);
+  const settingsResult = await settingsResponse.json();
+  const settings = useCaller ? settingsResult : settingsResult[0];
+  const storagePath = String(settings?.logo_path || "");
+  if (!storagePath || !storagePath.startsWith(`${firmId}/logos/`)) return "";
+  const logoResponse = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/documents/${storagePath.split("/").map(encodeURIComponent).join("/")}`,
+    { headers },
+  );
+  if (!logoResponse.ok) throw new Error(`Could not retrieve firm logo (${logoResponse.status}).`);
+  const mimeType = String(logoResponse.headers.get("content-type") || "").split(";")[0].toLowerCase();
+  if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(mimeType))
+    throw new Error("The firm logo has an unsupported image type.");
+  const bytes = Buffer.from(await logoResponse.arrayBuffer());
+  if (bytes.length > 5 * 1024 * 1024) throw new Error("The firm logo exceeds the 5 MB limit.");
+  return `data:${mimeType};base64,${bytes.toString("base64")}`;
+}
+
 async function fetchVersionSignatures(versionId) {
   const query = new URLSearchParams({
     select: "signer_name,signer_role,signature_method,signature_data,signature_font,consented_at",
@@ -155,7 +188,8 @@ async function processOneGenerationJob() {
     const officialPreview = await runOfficialPreview(payload);
     try {
       const signatures = await fetchVersionSignatures(job.version_id);
-      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures);
+      const coverLogo = await fetchFirmCoverLogo(job.firm_id);
+      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures, coverLogo);
       const pdfBuffer = await appendQueuedAttachments(renderedPdf, payload?.attachments);
       if (!pdfBuffer) throw new Error("Chromium PDF renderer is unavailable.");
       const fileName = safeWorkerFileName(payload, job.version_id, job.job_id, signatures);
@@ -454,7 +488,7 @@ function buildPreviewHtml(preview) {
 }
 
 
-function buildDownloadPreviewHtml(preview, signatures = []) {
+function buildDownloadPreviewHtml(preview, signatures = [], coverLogo = "") {
   const pages = Array.isArray(preview?.pages) ? preview.pages : [];
   const coverPage = pages.find((page) => page?.isCover) || null;
   const signaturePage = pages.find((page) => !page?.isCover && (page?.layout === "irs-signature-body" || String(page?.title || "").trim() === "Signatures")) || null;
@@ -595,6 +629,7 @@ function buildDownloadPreviewHtml(preview, signatures = []) {
         <div class="export-cover-band"></div>
         <div class="export-cover-sheet">
           ${renderCoverBlocks(coverPage)}
+          ${coverLogo ? `<img class="export-cover-logo" src="${coverLogo}" alt="Firm logo" />` : ""}
         </div>
       </article>
     </section>
@@ -629,6 +664,7 @@ function buildDownloadPreviewHtml(preview, signatures = []) {
     .export-docx-cover-firm { margin: 0.12in 0 0.26in; color: #122b43; font-family: Cambria, Georgia, serif; font-size: 27px; line-height: 1.1; text-align: center; }
     .export-docx-cover-note, .export-docx-cover-footer { margin: 0 0 8px; color: #617488; font-size: 10px; line-height: 1.4; text-align: center; }
     .export-docx-cover-footer { margin-top: 8px; margin-bottom: 0; font-weight: 700; }
+    .export-cover-logo { display: block; width: auto; height: auto; max-width: 2.8in; max-height: 1.5in; margin: 0.8in auto 0; object-fit: contain; }
 
     .export-flow-document { position: relative; page-break-before: avoid; break-before: avoid-page; }
     .export-flow-band { display: none; }
@@ -791,13 +827,13 @@ function runOfficialPreview(payload) {
   });
 }
 
-function renderPdfBuffer(preview, tempDir, slug, signatures = []) {
+function renderPdfBuffer(preview, tempDir, slug, signatures = [], coverLogo = "") {
   const chromePath = findChromeExecutable();
   if (!chromePath) return Promise.resolve(null);
 
   const htmlPath = path.join(tempDir, `${slug}-preview.html`);
   const pdfPath = path.join(tempDir, `${slug}-preview.pdf`);
-  writeFileSync(htmlPath, buildDownloadPreviewHtml(preview, signatures), "utf8");
+  writeFileSync(htmlPath, buildDownloadPreviewHtml(preview, signatures, coverLogo), "utf8");
 
   return new Promise((resolve, reject) => {
     const child = spawn(chromePath, [
@@ -930,7 +966,8 @@ const server = http.createServer(async (req, res) => {
         let pdfBase64 = "";
         let pdfRenderer = "";
         try {
-          const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug, Array.isArray(payload?.signatures) ? payload.signatures : []);
+          const coverLogo = await fetchFirmCoverLogo(payload.firmId, String(req.headers.authorization || ""));
+          const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug, Array.isArray(payload?.signatures) ? payload.signatures : [], coverLogo);
           if (renderedPdf) {
             pdfBase64 = renderedPdf.toString("base64");
             pdfRenderer = "structured-preview";
