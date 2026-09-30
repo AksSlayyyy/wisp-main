@@ -93,7 +93,7 @@ async function callServiceRpc(name, body) {
 async function uploadGeneratedPdf(storagePath, pdfBuffer) {
   const response = await fetch(`${SUPABASE_URL}/storage/v1/object/wisp-pdfs/${storagePath.split("/").map(encodeURIComponent).join("/")}`, {
     method: "POST",
-    headers: serviceRoleHeaders({ "Content-Type": "application/pdf", "x-upsert": "false" }),
+    headers: serviceRoleHeaders({ "Content-Type": "application/pdf", "x-upsert": "false", "Cache-Control": "no-store" }),
     body: pdfBuffer,
   });
   if (!response.ok) {
@@ -130,10 +130,20 @@ async function fetchFirmCoverLogo(firmId, authorization = "") {
   const settings = useCaller ? settingsResult : settingsResult[0];
   const storagePath = String(settings?.logo_path || "");
   if (!storagePath || !storagePath.startsWith(`${firmId}/logos/`)) return "";
-  const logoResponse = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/documents/${storagePath.split("/").map(encodeURIComponent).join("/")}`,
-    { headers },
-  );
+  let logoUrl = `${SUPABASE_URL}/storage/v1/object/documents/${storagePath.split("/").map(encodeURIComponent).join("/")}`;
+  if (useCaller) {
+    const ticketResponse = await fetch(`${SUPABASE_URL}/functions/v1/private-file`, {
+      method: "POST", headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "read", bucket: "documents", path: storagePath }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const ticket = await ticketResponse.json();
+    if (!ticketResponse.ok || !ticket.downloadUrl) throw new Error("Could not authorize firm logo download.");
+    const parsed = new URL(ticket.downloadUrl);
+    if (parsed.origin !== new URL(SUPABASE_URL).origin || parsed.pathname !== "/functions/v1/private-file") throw new Error("Invalid logo download endpoint.");
+    logoUrl = parsed.href;
+  }
+  const logoResponse = await fetch(logoUrl, { ...(useCaller ? {} : { headers }), cache: "no-store", signal: AbortSignal.timeout(30000) });
   if (!logoResponse.ok) throw new Error(`Could not retrieve firm logo (${logoResponse.status}).`);
   const mimeType = String(logoResponse.headers.get("content-type") || "").split(";")[0].toLowerCase();
   if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(mimeType))
