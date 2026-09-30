@@ -242,11 +242,10 @@ async function drainGenerationQueue() {
 }
 
 async function authenticateRequest(req) {
-  if (!REQUIRE_AUTH) return true;
+  if (!REQUIRE_AUTH) return { id: 'local-demo', localDemo: true };
   const authorization = String(req.headers.authorization || "");
-  const workerToken = String(req.headers["x-wisp-worker-token"] || "");
-  if (WORKER_TOKEN && workerToken === WORKER_TOKEN) return true;
-  if (!authorization.startsWith("Bearer ")) return false;
+  // Worker credentials authorize only the explicit internal queue route.
+  if (!authorization.startsWith("Bearer ")) return null;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
     throw new Error("Renderer authentication is not configured.");
   const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -254,8 +253,29 @@ async function authenticateRequest(req) {
       apikey: SUPABASE_ANON_KEY,
       Authorization: authorization,
     },
+    signal: AbortSignal.timeout(10000),
   });
-  return response.ok;
+  if (!response.ok) return null;
+  const user = await response.json().catch(() => null);
+  return user?.id ? { id: user.id, authorization } : null;
+}
+
+async function canRenderWispForFirm(principal, firmId) {
+  if (principal.localDemo) return true;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(firmId || ''))) return false;
+  const query = new URLSearchParams({ select: 'role,custom_permissions', firm_id: `eq.${firmId}`, user_id: `eq.${principal.id}`, status: 'eq.active', limit: '1' });
+  // Caller JWT keeps restrictive RLS firm-term and enrolled-MFA checks in force.
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/firm_memberships?${query}`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: principal.authorization },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) return false;
+  const [membership] = await response.json().catch(() => []);
+  if (!membership) return false;
+  if (membership.role === 'owner') return true;
+  const saved = membership.custom_permissions && typeof membership.custom_permissions === 'object' ? membership.custom_permissions : {};
+  if (typeof saved.wisp_builder === 'boolean') return saved.wisp_builder;
+  return membership.role === 'editor';
 }
 
 function sanitizeSlug(value) {
@@ -924,8 +944,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && req.url === "/merge") {
+    let principal;
     try {
-      if (!(await authenticateRequest(req)))
+      principal = await authenticateRequest(req);
+      if (!principal)
         return sendJson(res, 401, { error: "Sign in is required to generate a WISP PDF." });
     } catch (error) {
       return sendJson(res, 503, { error: error instanceof Error ? error.message : String(error) });
@@ -939,6 +961,8 @@ const server = http.createServer(async (req, res) => {
     req.on("end", async () => {
       try {
         const payload = JSON.parse(body || "{}");
+        if (!(await canRenderWispForFirm(principal, payload.firmId)))
+          return sendJson(res, 403, { error: 'You do not have WISP Builder access for this firm.' });
         const result = await runMerge(payload);
         res.writeHead(200, {
           "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -956,8 +980,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && req.url === "/merge-preview") {
+    let principal;
     try {
-      if (!(await authenticateRequest(req)))
+      principal = await authenticateRequest(req);
+      if (!principal)
         return sendJson(res, 401, { error: "Sign in is required to generate a WISP PDF." });
     } catch (error) {
       return sendJson(res, 503, { error: error instanceof Error ? error.message : String(error) });
@@ -971,6 +997,8 @@ const server = http.createServer(async (req, res) => {
     req.on("end", async () => {
       try {
         const payload = JSON.parse(body || "{}");
+        if (!(await canRenderWispForFirm(principal, payload.firmId)))
+          return sendJson(res, 403, { error: 'You do not have WISP Builder access for this firm.' });
         const result = await runMerge(payload);
         let preview = null;
         let previewTempDir = "";
