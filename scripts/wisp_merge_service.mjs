@@ -681,7 +681,7 @@ function buildDownloadPreviewHtml(preview, signatures = [], coverLogo = "", appe
   `;
 
   const attachmentDivider = Array.isArray(attachments) && attachments.length > 0
-    ? `<section class="export-attachments-divider" aria-label="Attachments"><div class="export-attachments-top"></div><h1>Attachments</h1><div class="export-attachments-bottom"></div></section>`
+    ? `<section class="export-attachments-divider" aria-label="Attachments"><div class="export-attachments-top"></div><h1 class="export-docx-heading">Attachments</h1><div class="export-attachments-bottom"></div></section>`
     : "";
 
   return `<!doctype html>
@@ -749,7 +749,7 @@ function buildDownloadPreviewHtml(preview, signatures = [], coverLogo = "", appe
     .export-signature-name { margin: 5px 0 2px; color: #10253a; font-size: 12.2px; font-weight: 700; }
     .export-signature-title { margin: 0; color: #4d6176; font-size: 11.2px; }
     .export-attachments-divider { position: relative; width: 612pt; height: 792pt; overflow: hidden; background: #fff; page-break-before: always; break-before: page; break-inside: avoid; }
-    .export-attachments-divider h1 { position: absolute; top: 50%; left: 0; width: 100%; margin: 0; transform: translateY(-50%); text-align: center; font-family: ${design ? `"Wisp-${design.headingFont}"` : 'Cambria, Georgia, serif'}; font-size: 28pt; line-height: 1.2; font-weight: 700; color: ${design?.headingColor || '#10253a'}; }
+    .export-attachments-divider h1 { position: absolute; top: 50%; left: 0; width: 100%; margin: 0; transform: translateY(-50%); text-align: center; font-size: 28pt; line-height: 1.2; text-decoration: none; }
     .export-attachments-top, .export-attachments-bottom { position: absolute; left: 0; width: 100%; }
     .export-attachments-top { top: 0; height: 30.24pt; background: ${design?.topBarColor || '#153f6d'}; }
     .export-attachments-bottom { bottom: 0; height: 16pt; background: ${design?.bottomBarColor || '#153f6d'}; }
@@ -932,6 +932,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         service: "wisp-merge-service",
         attachmentDivider: true,
+        attachmentDividerHeadingFont: "document-heading",
       templatePath: TEMPLATE_PATH,
       mergeScript: MERGE_SCRIPT,
       previewScript: PREVIEW_SCRIPT,
