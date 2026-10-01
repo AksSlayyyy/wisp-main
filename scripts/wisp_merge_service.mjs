@@ -200,7 +200,7 @@ async function processOneGenerationJob() {
     try {
       const signatures = await fetchVersionSignatures(job.version_id);
       const coverLogo = payload.appearance ? "" : await fetchFirmCoverLogo(job.firm_id);
-      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures, coverLogo, payload.appearance);
+      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures, coverLogo, payload.appearance, payload?.attachments);
       const pdfBuffer = await appendQueuedAttachments(renderedPdf, payload?.attachments);
       if (!pdfBuffer) throw new Error("Chromium PDF renderer is unavailable.");
       const fileName = safeWorkerFileName(payload, job.version_id, job.job_id, signatures);
@@ -519,7 +519,7 @@ function buildPreviewHtml(preview) {
 }
 
 
-function buildDownloadPreviewHtml(preview, signatures = [], coverLogo = "", appearance = null) {
+function buildDownloadPreviewHtml(preview, signatures = [], coverLogo = "", appearance = null, attachments = []) {
   const design = appearance ? globalThis.WispAppearance.normalize(appearance) : null;
   const designCss = design ? globalThis.WispAppearance.fontCss(design, (id, weight) =>
     "data:font/woff2;base64," + readFileSync(path.join(ROOT, "assets", "fonts", "wisp", `${id}-${weight}.woff2`)).toString("base64"))
@@ -680,6 +680,10 @@ function buildDownloadPreviewHtml(preview, signatures = [], coverLogo = "", appe
     </section>
   `;
 
+  const attachmentDivider = Array.isArray(attachments) && attachments.length > 0
+    ? `<section class="export-attachments-divider" aria-label="Attachments"><div class="export-attachments-top"></div><h1>Attachments</h1><div class="export-attachments-bottom"></div></section>`
+    : "";
+
   return `<!doctype html>
 <html>
 <head>
@@ -744,10 +748,15 @@ function buildDownloadPreviewHtml(preview, signatures = [], coverLogo = "", appe
     .export-signature-font-formal { font-family: Georgia, "Times New Roman", serif; font-style: italic; }
     .export-signature-name { margin: 5px 0 2px; color: #10253a; font-size: 12.2px; font-weight: 700; }
     .export-signature-title { margin: 0; color: #4d6176; font-size: 11.2px; }
+    .export-attachments-divider { position: relative; width: 612pt; height: 792pt; overflow: hidden; background: #fff; page-break-before: always; break-before: page; break-inside: avoid; }
+    .export-attachments-divider h1 { position: absolute; top: 50%; left: 0; width: 100%; margin: 0; transform: translateY(-50%); text-align: center; font-family: ${design ? `"Wisp-${design.headingFont}"` : 'Cambria, Georgia, serif'}; font-size: 28pt; line-height: 1.2; font-weight: 700; color: ${design?.headingColor || '#10253a'}; }
+    .export-attachments-top, .export-attachments-bottom { position: absolute; left: 0; width: 100%; }
+    .export-attachments-top { top: 0; height: 30.24pt; background: ${design?.topBarColor || '#153f6d'}; }
+    .export-attachments-bottom { bottom: 0; height: 16pt; background: ${design?.bottomBarColor || '#153f6d'}; }
     ${designCss}
   </style>
 </head>
-<body>${design ? '<div class="wisp-document-bottom" aria-hidden="true"></div>' : ''}${coverMarkup}${bodyMarkup}</body>
+<body>${design ? '<div class="wisp-document-bottom" aria-hidden="true"></div>' : ''}${coverMarkup}${bodyMarkup}${attachmentDivider}</body>
 </html>`;
 }
 
@@ -863,13 +872,13 @@ function runOfficialPreview(payload) {
   });
 }
 
-function renderPdfBuffer(preview, tempDir, slug, signatures = [], coverLogo = "", appearance = null) {
+function renderPdfBuffer(preview, tempDir, slug, signatures = [], coverLogo = "", appearance = null, attachments = []) {
   const chromePath = findChromeExecutable();
   if (!chromePath) return Promise.resolve(null);
 
   const htmlPath = path.join(tempDir, `${slug}-preview.html`);
   const pdfPath = path.join(tempDir, `${slug}-preview.pdf`);
-  writeFileSync(htmlPath, buildDownloadPreviewHtml(preview, signatures, coverLogo, appearance), "utf8");
+  writeFileSync(htmlPath, buildDownloadPreviewHtml(preview, signatures, coverLogo, appearance, attachments), "utf8");
 
   return new Promise((resolve, reject) => {
     const child = spawn(chromePath, [
@@ -920,8 +929,9 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && req.url === "/health") {
     return sendJson(res, 200, {
-      ok: true,
-      service: "wisp-merge-service",
+        ok: true,
+        service: "wisp-merge-service",
+        attachmentDivider: true,
       templatePath: TEMPLATE_PATH,
       mergeScript: MERGE_SCRIPT,
       previewScript: PREVIEW_SCRIPT,
@@ -1013,7 +1023,7 @@ const server = http.createServer(async (req, res) => {
         let pdfRenderer = "";
         try {
           const coverLogo = payload.appearance ? "" : await fetchFirmCoverLogo(payload.firmId, String(req.headers.authorization || ""));
-          const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug, Array.isArray(payload?.signatures) ? payload.signatures : [], coverLogo, payload.appearance);
+          const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug, Array.isArray(payload?.signatures) ? payload.signatures : [], coverLogo, payload.appearance, payload?.attachments);
           if (renderedPdf) {
             pdfBase64 = renderedPdf.toString("base64");
             pdfRenderer = "structured-preview";

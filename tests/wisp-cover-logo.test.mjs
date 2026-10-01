@@ -41,6 +41,7 @@ test("a draft preview cannot fetch another firm's logo with renderer credentials
     SUPABASE_ANON_KEY: "public-key",
     SUPABASE_SERVICE_ROLE_KEY: "private-key",
     URLSearchParams,
+    AbortSignal,
     serviceRoleHeaders: () => ({ apikey: "private-key", Authorization: "Bearer private-key" }),
     fetch: async (url, options) => {
       calls.push({ url, options });
@@ -62,6 +63,7 @@ test("a queued signed render reads the saved logo from the trusted firm namespac
     SUPABASE_ANON_KEY: "public-key",
     SUPABASE_SERVICE_ROLE_KEY: "private-key",
     URLSearchParams,
+    AbortSignal,
     Buffer,
     serviceRoleHeaders: () => ({ apikey: "private-key", Authorization: "Bearer private-key" }),
     fetch: async (url, options) => {
