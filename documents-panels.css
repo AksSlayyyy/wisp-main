@@ -1,4 +1,11 @@
 /* Reversible polish for the existing Documents panels; no data or actions change. */
+.documents-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: auto; padding: 14px 20px; border-top: 1px solid #e6edf2; color: #657a89; font-size: 12px; background: #fcfdfe; }
+.documents-pagination-actions { display: flex; align-items: center; gap: 10px; }
+.documents-pagination-position { white-space: nowrap; }
+.documents-pagination .btn { width: auto; min-height: 32px; padding: 6px 10px; border-radius: 7px; box-shadow: none; }
+.documents-pagination .btn:disabled { opacity: .45; cursor: default; }
+.documents-pagination .btn:focus-visible { outline: 2px solid #168761; outline-offset: 2px; }
+@media (max-width: 600px) { .documents-pagination { padding: 12px 18px; } .documents-pagination-actions { width: 100%; justify-content: space-between; gap: 8px; } }
 .documents-refined .documents-column-stack { align-items: stretch; }
 .documents-refined .documents-list-wrap { display: flex; flex-direction: column; }
 .documents-refined .documents-list-head {
