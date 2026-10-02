@@ -5,6 +5,15 @@ import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const functions = source.slice(source.indexOf("const trainingAssetBlobUrlCache ="), source.indexOf("function downloadTrainingAsset("));
+const assetFunctions = source.slice(source.indexOf("function getAppAssetBaseUrl("), source.indexOf("function getSupabasePublicTrainingAssetUrl("));
+test("cache-busted app scripts resolve training assets from app root on nested routes", () => {
+  const context = { URL, window: { location: { href: "https://example.test/training/preview/videos/0", origin: "https://example.test" } }, document: { querySelectorAll: () => [{ src: "https://example.test/app.js?v=20260929" }] } };
+  vm.createContext(context);
+  vm.runInContext(assetFunctions, context);
+  assert.equal(context.resolveAppAssetUrl("design/training/module.pdf"), "https://example.test/design/training/module.pdf");
+  context.document.querySelectorAll = () => [];
+  assert.equal(context.resolveAppAssetUrl("design/training/module.pdf"), "https://example.test/design/training/module.pdf");
+});
 function fixture(overrides = {}) {
   let serial = 0;
   const revoked = [], requests = [];

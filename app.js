@@ -4744,14 +4744,19 @@ function trainingRowIcon(kind) {
   return `    <svg viewBox="0 0 20 20" aria-hidden="true">      <path d="M5.1 2.85h6.05l3.25 3.2V16.7H5.1z"></path>      <path d="M11.15 2.85v3.2h3.25"></path>    </svg>  `;
 }
 function getAppAssetBaseUrl() {
-  const appScript = document.querySelector('script[src$="app.js"]');
+  // Match the script pathname, not its full src: cache-busting query strings
+  // must not make nested SPA routes become the base for bundled assets.
+  const appScript = [...document.querySelectorAll("script[src]")].find(script => {
+    try { return new URL(script.src, window.location.href).pathname.endsWith("/app.js"); }
+    catch { return false; }
+  });
   if (appScript?.src) {
     try {
       return new URL(".", appScript.src).toString();
     } catch {}
   }
   try {
-    return new URL("./", window.location.href).toString();
+    return new URL("/", window.location.href).toString();
   } catch {
     return `${window.location.origin}/`;
   }
