@@ -10,6 +10,7 @@ const files = [
   "index.html",
   "app.js",
   "styles.css",
+  "documents-panels.css",
   "config.js",
 ];
 const directories = ["assets/fonts", "design/training"];

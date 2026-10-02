@@ -1,0 +1,60 @@
+/* Reversible polish for the existing Documents panels; no data or actions change. */
+.documents-refined .documents-column-stack { align-items: stretch; }
+.documents-refined .documents-list-wrap { display: flex; flex-direction: column; }
+.documents-refined .documents-list-head {
+  min-height: 64px;
+  padding: 14px 22px;
+  background: #fff;
+  border-bottom: 1px solid #e6edf2;
+}
+.documents-refined .documents-list-head .btn {
+  width: auto;
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+.documents-refined .documents-list-head strong { white-space: nowrap; }
+.documents-refined .documents-file-list:has(> .documents-inline-upload) {
+  display: flex;
+  flex: 1;
+  padding: 0;
+}
+.documents-refined .documents-inline-upload {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  justify-content: start;
+  gap: 16px;
+  width: 100%;
+  min-height: 112px;
+  margin: 0;
+  padding: 24px 22px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  box-sizing: border-box;
+}
+.documents-refined .documents-inline-upload::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 40px;
+  border-radius: 7px;
+  background: #f2f5f7 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23657885' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 3H6v18h12V7zM14 3v5h4M9 12h6M9 16h4'/%3E%3C/svg%3E") center no-repeat;
+}
+.documents-refined .documents-workspace-panel .documents-inline-upload::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23657885' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5h7l2 2h9v12H3zM3 7h9'/%3E%3C/svg%3E");
+}
+.documents-refined .documents-inline-upload p {
+  max-width: 480px;
+  margin: 0;
+  color: #657a89;
+  font-size: 13px;
+  line-height: 1.65;
+}
+@media (max-width: 600px) {
+  .documents-refined .documents-list-head { padding: 14px 18px; }
+  .documents-refined .documents-inline-upload { padding: 22px 18px; gap: 12px; }
+}
