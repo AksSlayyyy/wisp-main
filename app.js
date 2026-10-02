@@ -1,4 +1,5 @@
 let deleteDocument = async () => {};
+let listFirmActivityLogs = async () => { throw new Error("Activity log connection is not ready."); };
 let fetchBootstrapState = async () => null;
 let hasSupabaseAuth = () => false;
 let getCurrentAccessToken = async () => "";
@@ -1109,6 +1110,7 @@ let state = {
   trainingPreviewLoading: false,
   trainingPreviewError: "",
   settingsTab: "profile",
+  activityFeed: { items: [], total: 0, page: 0, pageSize: 10, status: "idle", error: "", asOf: null, exporting: false },
   settingsModal: null,
   settingsLogo: null,
   settingsData: defaultSettingsData(),
@@ -1975,6 +1977,7 @@ function resetWorkspaceState() {
   state.wispVersions = [];
   state.documentsFiles = [];
   state.documentsPages = { working: 0, uploaded: 0 };
+  state.activityFeed = { items: [], total: 0, page: 0, pageSize: 10, status: "idle", error: "", asOf: null, exporting: false };
   state.documentWorkspaces = {};
   state.documentEditor = null;
   state.terminatedEmployeeChecklists = [];
@@ -2221,6 +2224,7 @@ async function bootstrapApp() {
         supabaseModule.saveDocumentWorkspaces || saveDocumentWorkspaces;
       saveWorkspaceSettings =
         supabaseModule.saveWorkspaceSettings || saveWorkspaceSettings;
+      listFirmActivityLogs = supabaseModule.listFirmActivityLogs || listFirmActivityLogs;
       saveFirmProfile = supabaseModule.saveFirmProfile || saveFirmProfile;
       completeFirmOnboarding =
         supabaseModule.completeFirmOnboarding || completeFirmOnboarding;
@@ -4568,9 +4572,73 @@ function settingsStaffTab() {
   const allSelected = staff.length > 0 && selectedCount === staff.length;
   return `    <section class="settings-card settings-card-info">      <div class="settings-card-head"><div class="settings-card-title"><h2>Staff</h2></div></div>      <div class="settings-staff-intro"><p>Invite people to review your active WISP and electronically sign that they understand and acknowledge it.</p></div>      <div class="settings-staff-toolbar"><div class="settings-staff-toolbar-left"><label class="settings-staff-page-size"><span>Show</span><select aria-label="Entries per page"><option selected>10</option></select><span>entries</span></label></div><div class="settings-staff-toolbar-right"><button class="btn secondary settings-staff-secondary" type="button" data-settings-action="import-staff">Import List</button><button class="btn primary settings-staff-primary" type="button" data-settings-action="add-staff">Add New</button></div></div>      <div class="settings-staff-table"><div class="settings-staff-head settings-staff-grid"><div class="settings-staff-check"><input type="checkbox" aria-label="Select all staff" data-staff-select-all ${allSelected ? "checked" : ""} ${staff.length ? "" : "disabled"} /></div><div>Email</div><div>First Name</div><div>Last Name</div><div>Title</div><div>Type</div><div>Action</div></div>      ${staff.length ? staff.map((member) => `<div class="settings-staff-empty-grid settings-staff-grid"><div class="settings-staff-check"><input type="checkbox" aria-label="Select ${attr(`${member.firstName || ""} ${member.lastName || ""}`.trim() || member.email || "staff member")}" data-staff-select="${attr(member.id)}" ${selectedIds.has(member.id) ? "checked" : ""} /></div><div>${escapeHtml(member.email || "—")}</div><div>${escapeHtml(member.firstName || "")}</div><div>${escapeHtml(member.lastName || "")}</div><div>${escapeHtml(member.title || "")}</div><div>${escapeHtml(member.type || "")}</div><div class="settings-staff-row-actions"><button class="settings-text-action" type="button" data-staff-edit="${attr(member.id)}">Edit</button><button class="settings-text-action" type="button" data-staff-remove="${attr(member.id)}">Remove</button></div></div>`).join("") : `<div class="settings-staff-empty-row"><div class="settings-staff-empty-grid settings-staff-grid"><div class="settings-staff-check"><input type="checkbox" aria-label="Select row" disabled /></div><div class="settings-staff-empty-copy"><strong>No staff records added</strong><p>Your invited reviewers and acknowledgement signers will appear here once they are added.</p></div></div></div>`}      </div>      <div class="settings-staff-footer"><div class="settings-staff-count">${selectedCount ? `${selectedCount} selected Â· ` : ""}Showing ${staff.length ? 1 : 0} to ${staff.length} of ${staff.length} entries</div><div class="settings-staff-footer-actions"><button class="btn secondary settings-staff-delete" type="button" data-staff-delete-selected ${selectedCount ? "" : "disabled"}>Delete Selected</button></div></div>    </section>  `;
 }
+async function refreshActivityLogs({ fresh = false } = {}) {
+  const feed = state.activityFeed;
+  if (feed.status === "loading") return;
+  const userId = state.authUser?.id;
+  if (fresh) feed.asOf = null;
+  feed.status = "loading"; feed.error = "";
+  if (state.screen === "settings" && state.settingsTab === "logs") render();
+  try {
+    let result = await listFirmActivityLogs({ offset: feed.page * feed.pageSize, limit: feed.pageSize, before: feed.asOf });
+    if (state.activityFeed !== feed || state.authUser?.id !== userId) return;
+    const lastPage = Math.max(0, Math.ceil(result.total / feed.pageSize) - 1);
+    if (feed.page > lastPage) {
+      feed.page = lastPage;
+      result = await listFirmActivityLogs({ offset: feed.page * feed.pageSize, limit: feed.pageSize, before: result.asOf });
+      if (state.activityFeed !== feed || state.authUser?.id !== userId) return;
+    }
+    feed.items = result.items; feed.total = Number(result.total) || 0;
+    feed.asOf = result.asOf; feed.status = "ready";
+  } catch (error) {
+    if (state.activityFeed !== feed || state.authUser?.id !== userId) return;
+    feed.items = []; feed.status = "error";
+    feed.error = error?.message || "Unable to load activity logs.";
+  }
+  if (state.activityFeed === feed && state.screen === "settings" && state.settingsTab === "logs") render();
+}
 function settingsActivityLogsTab() {
-  const activityRows = getSettingsData().activityLogs;
-  return `    <section class="settings-card settings-card-info">      <div class="settings-card-head"><div class="settings-card-title"><h2>Activity Logs</h2></div></div>      <div class="settings-activity-intro"><p>This section shows company activity such as logins, logouts, user changes, and other important events recorded across the WISP Builder workspace.</p></div>      <div class="settings-activity-toolbar"><div class="settings-activity-toolbar-left"><label class="settings-staff-page-size"><span>Show</span><select aria-label="Entries per page"><option selected>10</option></select><span>entries</span></label></div><div class="settings-activity-toolbar-right"><button class="btn secondary settings-activity-export" type="button" data-settings-action="export-logs">Export CSV</button></div></div>      <div class="settings-activity-table"><div class="settings-activity-head settings-activity-grid"><div>Activity</div><div>User</div><div>Details</div><div>Date</div><div>IP Address</div></div>${activityRows.map((row) => `<div class="settings-activity-row settings-activity-grid"><div class="settings-activity-cell"><span class="settings-activity-pill">${escapeHtml(row.activity)}</span></div><div class="settings-activity-cell">${escapeHtml(row.user)}</div><div class="settings-activity-cell settings-activity-detail">${escapeHtml(row.details)}</div><div class="settings-activity-cell settings-activity-date">${escapeHtml(settingsDisplayDate(row.date))}</div><div class="settings-activity-cell settings-activity-ip">${escapeHtml(row.ip)}</div></div>`).join("")}</div>    </section>  `;
+  const feed = state.activityFeed;
+  if (feed.status === "idle") queueMicrotask(() => { if (state.activityFeed === feed) void refreshActivityLogs({ fresh: true }); });
+  const busy = feed.status === "loading" || feed.status === "idle";
+  const pages = Math.max(1, Math.ceil(feed.total / feed.pageSize));
+  const rows = busy ? '<div class="settings-activity-message" role="status">Loading activity logs…</div>'
+    : feed.status === "error" ? `<div class="settings-activity-message" role="alert">${escapeHtml(feed.error)} <button class="btn secondary small" type="button" data-activity-refresh>Retry</button></div>`
+    : feed.items.length ? feed.items.map(row => `<div class="settings-activity-row settings-activity-grid" role="row"><div class="settings-activity-cell" role="cell"><span class="settings-activity-pill">${escapeHtml(row.activity)}</span></div><div class="settings-activity-cell" role="cell">${escapeHtml(row.user)}</div><div class="settings-activity-cell settings-activity-detail" role="cell">${escapeHtml(row.details)}</div><div class="settings-activity-cell settings-activity-date" role="cell">${escapeHtml(new Date(row.date).toLocaleString())}</div></div>`).join("")
+    : '<div class="settings-activity-message"><strong>No recorded activity yet</strong><p>New document, WISP, assessment, staff, company and access events will appear here. Events from before logging was enabled cannot be reconstructed.</p></div>';
+  return `<section class="settings-card settings-card-info"><div class="settings-card-head"><div class="settings-card-title"><h2>Activity Logs</h2></div></div><div class="settings-activity-intro"><p>Server-recorded changes and workspace access events for your firm. IP addresses are not collected.</p></div><div class="settings-activity-toolbar"><label class="settings-staff-page-size"><span>Show</span><select aria-label="Activity entries per page" data-activity-page-size ${busy ? "disabled" : ""}>${[10,25,50].map(size => `<option value="${size}" ${size === feed.pageSize ? "selected" : ""}>${size}</option>`).join("")}</select><span>entries</span></label><div class="settings-activity-toolbar-right"><button class="btn secondary" type="button" data-activity-refresh ${busy ? "disabled" : ""}>Refresh</button><button class="btn secondary settings-activity-export" type="button" data-settings-action="export-logs" ${busy || feed.exporting || !feed.total || feed.status === "error" ? "disabled" : ""}>${feed.exporting ? "Exporting…" : "Export CSV"}</button></div></div><div class="settings-activity-table" role="table" aria-label="Firm activity logs"><div class="settings-activity-head settings-activity-grid" role="row"><div role="columnheader">Activity</div><div role="columnheader">User</div><div role="columnheader">Details</div><div role="columnheader">Date & time</div></div>${rows}</div><nav class="documents-pagination" aria-label="Activity log pagination"><span role="status">${feed.total ? feed.page * feed.pageSize + 1 : 0}–${Math.min((feed.page + 1) * feed.pageSize,feed.total)} of ${feed.total}</span><div class="documents-pagination-actions"><button class="btn secondary small" type="button" data-activity-page="${feed.page - 1}" ${busy || feed.page === 0 ? "disabled" : ""}>Previous</button><span>Page ${feed.page + 1} of ${pages}</span><button class="btn secondary small" type="button" data-activity-page="${feed.page + 1}" ${busy || feed.page >= pages - 1 ? "disabled" : ""}>Next</button></div></nav></section>`;
+}
+function activityCsvCell(value) {
+  let text = String(value ?? "");
+  if (/^[\s\u0000-\u001f]*[=+@-]/.test(text)) text = "'" + text;
+  return '"' + text.replaceAll('"','""') + '"';
+}
+async function downloadSettingsActivityLogs() {
+  const feed = state.activityFeed;
+  if (feed.exporting || !feed.total || feed.status !== "ready") return;
+  feed.exporting = true; render();
+  try {
+    const rows = []; let offset = 0; let before = feed.asOf;
+    while (true) {
+      const result = await listFirmActivityLogs({ offset, limit: 200, before });
+      if (state.activityFeed !== feed) return;
+      before = result.asOf;
+      if (result.total > 10000) throw new Error("CSV export currently supports up to 10,000 events. Contact support for a larger export.");
+      rows.push(...result.items);
+      if (!result.items.length || rows.length >= result.total) break;
+      offset += result.items.length;
+    }
+    const csv = "\uFEFF" + [["Activity","User","Details","Date & time"], ...rows.map(row => [row.activity,row.user,row.details,row.date])].map(row => row.map(activityCsvCell).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = "settings-activity-logs.csv";
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url),250);
+  } catch (error) {
+    if (state.activityFeed === feed) showToast(error?.message || "Activity export failed.","error");
+  } finally {
+    feed.exporting = false;
+    if (state.activityFeed === feed && state.screen === "settings" && state.settingsTab === "logs") render();
+  }
 }
 function formatCompanyAddress() {
   const settings = getSettingsData();
@@ -8408,6 +8476,7 @@ function bindEvents() {
   document.querySelectorAll("[data-settings-tab]").forEach((button) => {
     button.addEventListener("click", async () => {
       state.settingsTab = button.dataset.settingsTab;
+      if (state.settingsTab === "logs" && state.activityFeed.status !== "loading") state.activityFeed.status = "idle";
       if (state.settingsTab === "users") {
         try {
           state.accessDirectory = await listFirmAccessDirectory();
@@ -8560,6 +8629,21 @@ function bindEvents() {
       }
     });
   }
+  document.querySelectorAll("[data-activity-refresh]").forEach(button => button.addEventListener("click", () => {
+    state.activityFeed.page = 0;
+    void refreshActivityLogs({ fresh: true });
+  }));
+  document.querySelector("[data-activity-page-size]")?.addEventListener("change", event => {
+    const size = Number(event.target.value);
+    if (![10,25,50].includes(size)) return;
+    state.activityFeed.pageSize = size; state.activityFeed.page = 0;
+    void refreshActivityLogs();
+  });
+  document.querySelectorAll("[data-activity-page]").forEach(button => button.addEventListener("click", () => {
+    const page = Number(button.dataset.activityPage);
+    if (!Number.isInteger(page) || page < 0 || state.activityFeed.status === "loading") return;
+    state.activityFeed.page = page; void refreshActivityLogs();
+  }));
   document.querySelectorAll("[data-settings-action]").forEach((button) => {
     button.addEventListener("click", () => {
       handleSettingsAction(button.dataset.settingsAction);
@@ -9797,7 +9881,7 @@ async function handleStaffRemove(staffId) {
     `Removed staff record ${staffId}`,
   );
 }
-function downloadSettingsActivityLogs() {
+function downloadLegacySettingsActivityLogs() {
   const settings = getSettingsData();
   const header = ["Activity", "User", "Details", "Date", "IP Address"];
   const rows = settings.activityLogs.map((row) => [

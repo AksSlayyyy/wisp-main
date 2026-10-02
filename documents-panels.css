@@ -1,4 +1,14 @@
 /* Reversible polish for the existing Documents panels; no data or actions change. */
+/* Activity feed: desktop columns, readable mobile overflow, visible loading/errors. */
+.settings-activity-grid { grid-template-columns: minmax(140px,1.1fr) minmax(160px,1.1fr) minmax(220px,2fr) minmax(150px,1fr); }
+.settings-activity-message { padding: 28px 20px; color: #657a89; font-size: 14px; line-height: 1.65; }
+.settings-activity-message strong { color: #243b4b; }
+.settings-activity-message p { margin: 6px 0 0; }
+.settings-activity-message .btn { margin-left: 12px; }
+.settings-activity-toolbar-right { display: flex; gap: 10px; }
+.settings-activity-cell { overflow-wrap: anywhere; }
+.settings-activity-head { display: grid; }
+@media (max-width: 900px) { .settings-activity-table { overflow-x: auto; } .settings-activity-grid { min-width: 740px; } .settings-activity-toolbar { flex-wrap: wrap; gap: 14px; } }
 .documents-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: auto; padding: 14px 20px; border-top: 1px solid #e6edf2; color: #657a89; font-size: 12px; background: #fcfdfe; }
 .documents-pagination-actions { display: flex; align-items: center; gap: 10px; }
 .documents-pagination-position { white-space: nowrap; }

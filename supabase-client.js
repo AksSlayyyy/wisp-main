@@ -282,6 +282,9 @@ export async function fetchBootstrapState() {
     const user = await getAuthenticatedUser();
     const firm = await getActiveFirm();
     if (!firm) return null;
+    void supabase.rpc("record_my_workspace_session", { p_firm_id: firm.id })
+      .then(({ error }) => { if (error) console.warn("Workspace access event could not be recorded."); })
+      .catch(() => console.warn("Workspace access event could not be recorded."));
 
     const [
       trainingAssetsResult,
@@ -803,6 +806,17 @@ export async function updateWorkspaceAuthProfile({
   return currentUserCache;
 }
 
+export async function listFirmActivityLogs({ offset = 0, limit = 10, before = null } = {}) {
+  if (!hasClient()) throw new Error("Activity logs require an authenticated connection.");
+  const firm = await getActiveFirm();
+  if (!firm) throw new Error("No active firm workspace.");
+  const { data, error } = await supabase.rpc("list_firm_activity", {
+    p_firm_id: firm.id, p_offset: offset, p_limit: limit, p_before: before,
+  });
+  if (error) throw error;
+  if (!Array.isArray(data?.items)) throw new Error("Invalid activity log response.");
+  return data;
+}
 export async function listFirmAccessDirectory() {
   if (!hasClient()) return { members: [], invitations: [] };
   const firm = await getActiveFirm();
@@ -2341,6 +2355,10 @@ export async function requestPasswordRecovery(email) {
 
 export async function signOutCurrentUser() {
   if (!hasClient()) return;
+  try {
+    const firm = await getActiveFirm();
+    if (firm) await supabase.rpc("record_my_workspace_session", { p_firm_id: firm.id, p_event: "sign_out_requested" }).abortSignal(AbortSignal.timeout(5000));
+  } catch { console.warn("Sign-out activity could not be recorded."); }
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
