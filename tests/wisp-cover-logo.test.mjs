@@ -27,8 +27,9 @@ test("logo is centered below the WISP cover text and absent when none is saved",
 });
 
 test("draft preview uses caller access while queued signed PDFs use the trusted job firm", () => {
-  assert.match(source, /fetchFirmCoverLogo\(payload\.firmId, String\(req\.headers\.authorization \|\| ""\)\)/);
-  assert.match(source, /fetchFirmCoverLogo\(job\.firm_id\)/);
+  assert.match(source, /prepareReviewedRender\(payload, payload\.firmId, signatures, principal\.authorization\)/);
+  assert.match(source, /prepareReviewedRender\(payload, job\.firm_id, signatures\)/);
+  assert.match(source, /fetchFirmCoverLogo\(firmId, authorization\)/);
   assert.match(source, /useCaller\s*\? `\$\{SUPABASE_URL\}\/rest\/v1\/rpc\/get_my_firm_app_settings`/);
   assert.match(source, /storagePath\.startsWith\(`\$\{firmId\}\/logos\/`\)/);
 });

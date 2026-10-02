@@ -7,6 +7,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { PDFDocument } from "pdf-lib";
 import "../wisp-appearance.js";
+import { RENDER_CACHE_BUCKET, prepareRenderIdentity, reuseOrRenderPdf } from './lib/wisp-render-cache.mjs';
 
 const HOST = process.env.WISP_MERGE_HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || process.env.WISP_MERGE_PORT || 8766);
@@ -42,6 +43,7 @@ const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY |
 const WORKER_TOKEN = String(process.env.WISP_RENDERER_WORKER_TOKEN || "");
 const WORKER_ENABLED = process.env.WISP_RENDERER_WORKER_ENABLED === "true";
 const WORKER_POLL_MS = Math.max(5000, Number(process.env.WISP_RENDERER_WORKER_POLL_MS || 15000));
+const RENDER_CACHE_REVISION = createHash('sha256').update([TEMPLATE_PATH, MERGE_SCRIPT, OFFICIAL_SOURCE_JSON, OFFICIAL_PREVIEW_SCRIPT, path.join(ROOT, 'wisp-appearance.js'), path.join(ROOT, 'scripts', 'wisp_merge_service.mjs'), path.join(ROOT, 'scripts', 'lib', 'wisp-render-cache.mjs'), ...globalThis.WispAppearance.fonts.flatMap(([id]) => [400, 700].map(weight => path.join(ROOT, 'assets', 'fonts', 'wisp', `${id}-${weight}.woff2`)))].map(file => readFileSync(file)).map(bytes => createHash('sha256').update(bytes).digest('hex')).join(':')).digest('hex');
 
 function signatureFontDataUrl(fileName) {
   try {
@@ -184,6 +186,70 @@ async function appendQueuedAttachments(pdfBuffer, attachments = []) {
   return Buffer.from(await combined.save());
 }
 
+async function downloadRenderAttachment(storagePath, authorization = '') {
+  if (!authorization) return downloadPrivateWispPdf(storagePath);
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/private-file`, {
+    method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, Authorization: authorization, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'read', bucket: 'wisp-pdfs', path: storagePath }), signal: AbortSignal.timeout(30000),
+  });
+  const ticket = await response.json();
+  if (!response.ok || !ticket.downloadUrl) throw new Error('Could not authorize WISP attachment download.');
+  const url = new URL(ticket.downloadUrl);
+  if (url.origin !== new URL(SUPABASE_URL).origin || url.pathname !== '/functions/v1/private-file') throw new Error('Invalid attachment download endpoint.');
+  const file = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(60000) });
+  if (!file.ok) throw new Error('Could not download the authorized WISP attachment.');
+  return Buffer.from(await file.arrayBuffer());
+}
+
+async function readReviewedPdf(storagePath) {
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${RENDER_CACHE_BUCKET}/${storagePath}`, { headers: serviceRoleHeaders(), cache: 'no-store', signal: AbortSignal.timeout(30000) });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    if (response.status === 400 && String(error.statusCode || error.status) === '404') return null;
+    throw new Error('The reviewed PDF cache is temporarily unavailable.');
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function storeReviewedPdf(storagePath, bytes) {
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${RENDER_CACHE_BUCKET}/${storagePath}`, {
+    method: 'POST', headers: serviceRoleHeaders({ 'Content-Type': 'application/pdf', 'x-upsert': 'false', 'Cache-Control': 'no-store' }), body: bytes, signal: AbortSignal.timeout(60000),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    if (response.status === 409 || String(error.statusCode) === '409') return readReviewedPdf(storagePath);
+    throw new Error('Could not save the reviewed PDF securely. Please retry.');
+  }
+  return bytes;
+}
+
+async function prepareReviewedRender(payload, firmId, signatures, authorization = '') {
+  const coverLogo = payload.appearance ? '' : await fetchFirmCoverLogo(firmId, authorization);
+  const identity = await prepareRenderIdentity({ payload, firmId, signatures, coverLogo, revision: RENDER_CACHE_REVISION, readAttachment: storagePath => downloadRenderAttachment(storagePath, authorization) });
+  return { identity, coverLogo };
+}
+
+async function appendReviewedAttachments(pdfBuffer, files) {
+  if (!files.length) return pdfBuffer;
+  const pdf = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+  for (const { bytes } of files) {
+    const attachment = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const pages = await pdf.copyPages(attachment, attachment.getPageIndices());
+    pages.forEach(page => pdf.addPage(page));
+  }
+  return Buffer.from(await pdf.save());
+}
+
+async function previewPdfBytes(bytes, attachmentPageCount, fullPackage) {
+  if (fullPackage || !attachmentPageCount) return bytes;
+  // Older open browser tabs still append their attachments locally. Return only
+  // the WISP + divider to those tabs, while retaining the full server package.
+  const pdf = await PDFDocument.load(bytes);
+  for (let index = 0; index < attachmentPageCount; index++) pdf.removePage(pdf.getPageCount() - 1);
+  return Buffer.from(await pdf.save());
+}
+
 function safeWorkerFileName(payload, versionId, jobId, signatures = []) {
   const firmName = String(payload?.mergeFields?.companyName || payload?.firm?.companyName || "wisp");
   const signedSuffix = signatures.length ? `-signed-${String(jobId).slice(0, 8)}` : "";
@@ -194,14 +260,19 @@ async function processOneGenerationJob() {
   const job = await callServiceRpc("claim_wisp_generation_job", {});
   if (!job?.job_id) return false;
   try {
-    const payload = job.render_payload;
-    if (!payload || typeof payload !== "object") throw new Error("Queued WISP has no render payload.");
-    const officialPreview = await runOfficialPreview(payload);
-    try {
-      const signatures = await fetchVersionSignatures(job.version_id);
-      const coverLogo = payload.appearance ? "" : await fetchFirmCoverLogo(job.firm_id);
-      const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures, coverLogo, payload.appearance, payload?.attachments);
-      const pdfBuffer = await appendQueuedAttachments(renderedPdf, payload?.attachments);
+    if (!job.render_payload || typeof job.render_payload !== 'object' || Array.isArray(job.render_payload)) throw new Error("Queued WISP has no render payload.");
+    const payload = { ...job.render_payload, firmId: job.firm_id };
+    const signatures = await fetchVersionSignatures(job.version_id);
+    const { identity, coverLogo } = await prepareReviewedRender(payload, job.firm_id, signatures);
+    const { bytes: pdfBuffer, reused } = await reuseOrRenderPdf({ identity, readCache: readReviewedPdf, writeCache: storeReviewedPdf, render: async files => {
+      const officialPreview = await runOfficialPreview(payload);
+      try {
+        const renderedPdf = await renderPdfBuffer(officialPreview.preview, officialPreview.tempDir, sanitizeSlug(payload?.mergeFields?.companyName), signatures, coverLogo, payload.appearance, payload?.attachments);
+        return await appendReviewedAttachments(renderedPdf, files);
+      } finally { try { rmSync(officialPreview.tempDir, { recursive: true, force: true }); } catch {} }
+    }});
+    console.log('WISP job artifact', job.job_id, reused ? 'reused-reviewed-pdf' : 'rendered-new-pdf');
+    {
       if (!pdfBuffer) throw new Error("Chromium PDF renderer is unavailable.");
       const fileName = safeWorkerFileName(payload, job.version_id, job.job_id, signatures);
       const storagePath = `${job.firm_id}/wisp/${job.version_id}/${fileName}`;
@@ -215,8 +286,6 @@ async function processOneGenerationJob() {
         p_content_hash: contentHash,
         p_size_bytes: pdfBuffer.length,
       });
-    } finally {
-      try { rmSync(officialPreview.tempDir, { recursive: true, force: true }); } catch {}
     }
   } catch (error) {
     console.error("WISP generation job failed", job.job_id, error);
@@ -933,6 +1002,7 @@ const server = http.createServer(async (req, res) => {
         service: "wisp-merge-service",
         attachmentDivider: true,
         attachmentDividerHeadingFont: "document-heading",
+        reviewedPdfReuse: true,
       templatePath: TEMPLATE_PATH,
       mergeScript: MERGE_SCRIPT,
       previewScript: PREVIEW_SCRIPT,
@@ -1022,11 +1092,21 @@ const server = http.createServer(async (req, res) => {
         }
         let pdfBase64 = "";
         let pdfRenderer = "";
+        let attachmentPageCount = 0;
+        let totalPageCount = 0;
+        let reusedReviewedPdf = false;
         try {
-          const coverLogo = payload.appearance ? "" : await fetchFirmCoverLogo(payload.firmId, String(req.headers.authorization || ""));
-          const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug, Array.isArray(payload?.signatures) ? payload.signatures : [], coverLogo, payload.appearance, payload?.attachments);
-          if (renderedPdf) {
-            pdfBase64 = renderedPdf.toString("base64");
+          const signatures = Array.isArray(payload?.signatures) ? payload.signatures : [];
+          const { identity, coverLogo } = await prepareReviewedRender(payload, payload.firmId, signatures, principal.authorization);
+          const { bytes, reused } = await reuseOrRenderPdf({ identity, readCache: readReviewedPdf, writeCache: storeReviewedPdf, render: async files => {
+            const renderedPdf = await renderPdfBuffer(preview, result.tempDir, result.slug, signatures, coverLogo, payload.appearance, payload?.attachments);
+            return appendReviewedAttachments(renderedPdf, files);
+          }});
+          for (const file of identity.files) attachmentPageCount += (await PDFDocument.load(file.bytes, { ignoreEncryption: true })).getPageCount();
+          totalPageCount = (await PDFDocument.load(bytes)).getPageCount();
+          reusedReviewedPdf = reused;
+          if (bytes) {
+            pdfBase64 = (await previewPdfBytes(bytes, attachmentPageCount, payload.reviewPackageVersion === 1)).toString("base64");
             pdfRenderer = "structured-preview";
           }
         } catch (error) {
@@ -1040,6 +1120,7 @@ const server = http.createServer(async (req, res) => {
           pdfFileName: `${result.slug}-preview.pdf`,
           pdfBase64,
           pdfRenderer,
+          attachmentsIncluded: payload.reviewPackageVersion === 1, attachmentPageCount, totalPageCount, reusedReviewedPdf,
           ...preview,
         });
         try { if (previewTempDir) rmSync(previewTempDir, { recursive: true, force: true }); } catch {}

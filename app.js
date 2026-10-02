@@ -5632,7 +5632,7 @@ async function requestBuilderMergedDocx() {
     const response = await fetch(mergePreviewUrl, {
       method: "POST",
       headers: await getMergeRequestHeaders(),
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, reviewPackageVersion: 1 }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
@@ -5657,7 +5657,9 @@ async function requestBuilderMergedDocx() {
     }
     if (result?.pdfBase64) {
       const wispPdfBlob = base64ToBlob(result.pdfBase64, "application/pdf");
-      const mergedPdf = await appendBuilderAttachmentsToPdf(wispPdfBlob);
+      const mergedPdf = result.attachmentsIncluded === true
+        ? { blob: wispPdfBlob, totalPageCount: result.totalPageCount, attachmentPageCount: result.attachmentPageCount }
+        : await appendBuilderAttachmentsToPdf(wispPdfBlob);
       state.builderMergePdfBlob = mergedPdf.blob;
       state.builderMergePdfUrl = URL.createObjectURL(mergedPdf.blob);
       state.builderMergePdfFileName = result?.pdfFileName || "wisp-preview.pdf";
@@ -5746,12 +5748,12 @@ async function finalizeBuilderWisp() {
   );
   if (!queued?.job_id)
     throw new Error("Supabase did not create the WISP generation job.");
-  showToast("WISP generation queued. Creating the immutable PDF…", "info");
+  showToast("Finalizing your reviewed WISP PDF…", "info");
 
   const deadline = Date.now() + 150000;
   let completed = null;
   while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const status = await getWispGenerationStatus(queued.job_id, savedProject.id);
     if (status?.job?.status === "succeeded" && status.generatedFile) {
       completed = status;
