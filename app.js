@@ -4822,6 +4822,8 @@ async function getTrainingAssetBlobUrl(item) {
     throw new Error(`Unexpected asset response (${contentType}).`);
   }
   const blob = await response.blob();
+  if (await blob.slice(0, 5).text() !== "%PDF-")
+    throw new Error("The training file did not contain a valid PDF.");
   const blobUrl = URL.createObjectURL(blob);
   trainingAssetBlobUrlCache.set(cacheKey, blobUrl);
   return blobUrl;
@@ -4835,18 +4837,21 @@ async function openTrainingAssetPreview(groupKey, index) {
   state.trainingPreviewOpen = true;
   state.trainingPreviewTitle = item.title || "Training PDF";
   state.trainingPreviewLabel = item.previewLabel || "Training document";
-  state.trainingPreviewUrl = sourceUrl;
+  state.trainingPreviewUrl = "";
   state.trainingPreviewLoading = !!sourceUrl;
   state.trainingPreviewError = sourceUrl
     ? ""
     : "Could not load this PDF preview.";
   render();
   if (!sourceUrl) return;
-  if (
-    !state.trainingPreviewOpen ||
-    requestToken !== trainingPreviewRequestToken
-  )
-    return;
+  try {
+    const blobUrl = await getTrainingAssetBlobUrl(item);
+    if (!state.trainingPreviewOpen || requestToken !== trainingPreviewRequestToken) return;
+    state.trainingPreviewUrl = blobUrl;
+  } catch (error) {
+    if (!state.trainingPreviewOpen || requestToken !== trainingPreviewRequestToken) return;
+    state.trainingPreviewError = error?.message || "Could not load this PDF preview. Please try again.";
+  }
   state.trainingPreviewLoading = false;
   render();
 }
