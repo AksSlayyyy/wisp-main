@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { PDFDocument } from "pdf-lib";
 import "../wisp-appearance.js";
 import { RENDER_CACHE_BUCKET, prepareRenderIdentity, reuseOrRenderPdf } from './lib/wisp-render-cache.mjs';
+import { createQueueDrainer } from './lib/wisp-queue-drainer.mjs';
 
 const HOST = process.env.WISP_MERGE_HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || process.env.WISP_MERGE_PORT || 8766);
@@ -302,13 +303,10 @@ async function processOneGenerationJob() {
   return true;
 }
 
-async function drainGenerationQueue() {
-  if (!WORKER_ENABLED || !SUPABASE_SERVICE_ROLE_KEY) return { processed: 0, enabled: false };
-  let processed = 0;
-  // One service process handles one job at a time; database leasing keeps it safe across replicas.
-  while (processed < 2 && await processOneGenerationJob()) processed += 1;
-  return { processed, enabled: true };
-}
+const drainGenerationQueue = createQueueDrainer(processOneGenerationJob, {
+  enabled: () => WORKER_ENABLED && Boolean(SUPABASE_SERVICE_ROLE_KEY),
+  batchSize: 2,
+});
 
 async function authenticateRequest(req) {
   if (!REQUIRE_AUTH) return { id: 'local-demo', localDemo: true };
